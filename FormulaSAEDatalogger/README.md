@@ -11,3 +11,6 @@ Added FreeRTOS + FAT extension, added both FreeRTOS and FreeRTOS + FAT config fi
 
 v0.2.0
 Initial bulk completion of clock configuration module. In-line and function comments completed. Validation and verification of module still needed. 
+
+v0.3.0
+Started basic UART communication for GPS module. Since this is just to establish communications, writing a generic UART driver will be put off until later in the software development stage.
