@@ -7,4 +7,7 @@ v0.0.0
 Generated bare Amazon FreeRTOS (version 10.0.1) project from custom MK66FN2M0xxx18 SDK (SDK version 2.5.0, manifest version 3.4.0).
 
 v0.1.0
-Added FreeRTOS + FAT extension, added both FreeRTOS and FreeRTOS + FAT config files (FreeRTOSConfig.h and FreeRTOSFATDefaults.h) to board directory as they are application specific.  
+Added FreeRTOS + FAT extension, added both FreeRTOS and FreeRTOS + FAT config files (FreeRTOSConfig.h and FreeRTOSFATDefaults.h) to board directory as they are application specific.
+
+v0.2.0
+Initial bulk completion of clock configuration module. In-line and function comments completed. Validation and verification of module still needed. 

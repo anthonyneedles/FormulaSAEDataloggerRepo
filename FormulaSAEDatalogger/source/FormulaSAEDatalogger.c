@@ -1,5 +1,5 @@
 /******************************************************************************
-*   Formula SAE Datalogger.c v0.1.0
+*   Formula SAE Datalogger.c v0.2.0
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -28,11 +28,12 @@
 #include "MK66F18.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "ClockConfig.h"
 
 
 int main(void) {
 
-
+    void ClockConfigRun(void);
 
     return 0 ;
 }

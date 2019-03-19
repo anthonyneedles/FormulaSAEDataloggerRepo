@@ -226,7 +226,7 @@
 								<option id="com.crt.advproject.link.gcc.lto.optmization.level.1227687" name="Link-time optimization level" superClass="com.crt.advproject.link.gcc.lto.optmization.level"/>
 								<option id="com.crt.advproject.link.fpu.911446564" name="Floating point" superClass="com.crt.advproject.link.fpu" value="com.crt.advproject.link.fpu.fpv4.hard" valueType="enumerated"/>
 								<option id="com.crt.advproject.link.manage.997616243" name="Manage linker script" superClass="com.crt.advproject.link.manage" value="true" valueType="boolean"/>
-								<option id="com.crt.advproject.link.script.1533605773" name="Linker script" superClass="com.crt.advproject.link.script" useByScannerDiscovery="false" value="FormulaSAEDatalogger_Debug.ld" valueType="string"/>
+								<option id="com.crt.advproject.link.script.1533605773" name="Linker script" superClass="com.crt.advproject.link.script" useByScannerDiscovery="false" value="&quot;FormulaSAEDatalogger_Debug.ld&quot;" valueType="string"/>
 								<option id="com.crt.advproject.link.scriptdir.1403573534" name="Script path" superClass="com.crt.advproject.link.scriptdir"/>
 								<option id="com.crt.advproject.link.crpenable.1961821331" name="Enable automatic placement of Code Read Protection field in image" superClass="com.crt.advproject.link.crpenable"/>
 								<option id="com.crt.advproject.link.flashconfigenable.127662410" name="Enable automatic placement of Flash Configuration field in image" superClass="com.crt.advproject.link.flashconfigenable" value="true" valueType="boolean"/>
@@ -248,7 +248,9 @@
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
 							</tool>
-							<tool id="com.crt.advproject.tool.debug.debug.1978231886" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.debug"/>
+							<tool id="com.crt.advproject.tool.debug.debug.1978231886" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.debug">
+								<option id="com.crt.advproject.linkserver.debug.prevent.debug.770244080" superClass="com.crt.advproject.linkserver.debug.prevent.debug"/>
+							</tool>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -377,6 +379,8 @@
 								<option id="com.crt.advproject.gcc.specs.583266487" name="Specs" superClass="com.crt.advproject.gcc.specs"/>
 								<option id="com.crt.advproject.gcc.config.1334370857" name="Obsolete (Config)" superClass="com.crt.advproject.gcc.config"/>
 								<option id="com.crt.advproject.gcc.store.1961981342" name="Obsolete (Store)" superClass="com.crt.advproject.gcc.store"/>
+								<option id="com.crt.advproject.gcc.exe.release.option.optimization.level.205405955" superClass="com.crt.advproject.gcc.exe.release.option.optimization.level"/>
+								<option id="com.crt.advproject.gcc.exe.release.option.debugging.level.948944872" superClass="com.crt.advproject.gcc.exe.release.option.debugging.level"/>
 								<inputType id="com.crt.advproject.compiler.input.1423490439" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
 							<tool id="com.crt.advproject.gas.exe.release.697605867" name="MCU Assembler" superClass="com.crt.advproject.gas.exe.release">
@@ -401,6 +405,7 @@
 								<option id="com.crt.advproject.gas.specs.610256963" name="Specs" superClass="com.crt.advproject.gas.specs"/>
 								<option id="com.crt.advproject.gas.config.896730165" name="Obsolete (Config)" superClass="com.crt.advproject.gas.config"/>
 								<option id="com.crt.advproject.gas.store.1242808135" name="Obsolete (Store)" superClass="com.crt.advproject.gas.store"/>
+								<option id="com.crt.advproject.gas.debug.1629125020" superClass="com.crt.advproject.gas.debug"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1489950639" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.673518671" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 							</tool>
@@ -484,7 +489,7 @@
 								<option id="com.crt.advproject.link.gcc.lto.optmization.level.540348701" name="Link-time optimization level" superClass="com.crt.advproject.link.gcc.lto.optmization.level"/>
 								<option id="com.crt.advproject.link.fpu.2054463736" name="Floating point" superClass="com.crt.advproject.link.fpu" value="com.crt.advproject.link.fpu.fpv4.hard" valueType="enumerated"/>
 								<option id="com.crt.advproject.link.manage.602281117" name="Manage linker script" superClass="com.crt.advproject.link.manage" value="true" valueType="boolean"/>
-								<option id="com.crt.advproject.link.script.1374909329" name="Linker script" superClass="com.crt.advproject.link.script" value="FormulaSAEDatalogger_Release.ld" valueType="string"/>
+								<option id="com.crt.advproject.link.script.1374909329" name="Linker script" superClass="com.crt.advproject.link.script" value="&quot;FormulaSAEDatalogger_Release.ld&quot;" valueType="string"/>
 								<option id="com.crt.advproject.link.scriptdir.907226624" name="Script path" superClass="com.crt.advproject.link.scriptdir"/>
 								<option id="com.crt.advproject.link.crpenable.116960634" name="Enable automatic placement of Code Read Protection field in image" superClass="com.crt.advproject.link.crpenable"/>
 								<option id="com.crt.advproject.link.flashconfigenable.953494343" name="Enable automatic placement of Flash Configuration field in image" superClass="com.crt.advproject.link.flashconfigenable" value="true" valueType="boolean"/>
@@ -506,7 +511,9 @@
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
 							</tool>
-							<tool id="com.crt.advproject.tool.debug.release.822405796" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.release"/>
+							<tool id="com.crt.advproject.tool.debug.release.822405796" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.release">
+								<option id="com.crt.advproject.linkserver.debug.prevent.release.1686941725" superClass="com.crt.advproject.linkserver.debug.prevent.release"/>
+							</tool>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
