@@ -26,20 +26,76 @@
 *   Author: Anthony Needles
 ******************************************************************************/
 #include "MK66F18.h"
-//#include "FreeRTOS.h"
-//#include "task.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "ClockConfig.h"
-//#include "clock_config.h"
-//#include "pin_mux.h"
+#include "DigitalOutput.h"
 
+#define ENABLE                      0x01U
+#define ALT_1_GPIO                  0x01U
+
+void ClockInitTask(void *pvParameters);
 
 void main(void) {
     volatile uint32_t test_int = 0;
+    DigitalOutMsg_t test_msg = {0xAA, 0xAA};
 
+
+    xTaskCreate(ClockInitTask,
+                "Clock Init Task",
+                256,
+                NULL,
+                1,
+                NULL);
     ClockConfigRun();
+    DigitalOutputInit();
+    DigitalOutputSet(test_msg);
+    test_msg.power_field = 0x55;
+    test_msg.state_field = 0x55;
+    DigitalOutputSet(test_msg);
 
+
+    vTaskStartScheduler();
+
+    //DOUTP CONFIG TEST START
+
+
+
+    //DOUTP CONFIG TEST END
+
+    //AINP CONFIG TEST START
+
+//    SIM->SCGC5 |= SIM_SCGC5_PORTB(ENABLE);
+//    PORTB->PCR[23] = ((PORTB->PCR[23] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_1_GPIO));
+//    GPIOB->PDDR |= GPIO_PDDR_PDD((0x01 << 23));
+//    GPIOB->PDOR |= GPIO_PDOR_PDO((0x01 << 23));
+//    GPIOB->PDOR &= ~GPIO_PDOR_PDO((0x01 << 23));
+
+    //AINP CONFIG TEST END
+
+    //AINC CONFIG TEST START
+
+//    SIM->SCGC5 |= SIM_SCGC5_PORTC(ENABLE);
+//    PORTC->PCR[12] = ((PORTC->PCR[12] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_1_GPIO));
+//    GPIOC->PDDR |= GPIO_PDDR_PDD((0x01 << 12));
+//    GPIOC->PDOR |= GPIO_PDOR_PDO((0x01 << 12));
+//    GPIOC->PDOR &= ~GPIO_PDOR_PDO((0x01 << 12));
+
+    //AINC CONFIG TEST END
 
     while(1){
         test_int++;
     }
+}
+
+void ClockInitTask(void *pvParameters)
+{
+    volatile uint32_t test_int = 0;
+    while(1)
+    {
+        while(1){
+            test_int++;
+        }
+    }
+    vTaskDelete(NULL);
 }

@@ -17,3 +17,6 @@ Started basic UART communication for GPS module. Since this is just to establish
 
 v0.4.0
 Completed clock configuration. Hardware testing completed via CLKOUT and RTC_CLKOUT pins. System oscillator 12 MHz frequency, 1 Hz RTC counting, 60 MHz Flexbus clock directly observed and verified. Debugged previous hard faulting. Updated all comments in ClockConfig.c/.h.
+
+v0.5.0
+Completed writing initial Digital Output module. Tested and verified proper operation of code on hardware. More will need to be done for new board revision. Most code in FormulaSAEDatalogger.c is for testing.

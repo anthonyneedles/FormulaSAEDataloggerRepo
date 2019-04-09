@@ -24,9 +24,9 @@
 *   the SDHC max frequency of 50MHz. However, as specified in SDHC_SYSCT, this
 *   clock is further divided to produce a valid value.
 *
-*   Comments up to date as of: 04/08/2019
-*
 *   MCU: MK66FN2M0VLQ18R
+*
+*   Comments up to date as of: 04/08/2019
 *
 *   Created on: 03/12/2019
 *   Author: Anthony Needles
@@ -71,9 +71,11 @@ static void clockConfigSetSDHC0(void);
 #define PLLFLL_SEL                  0x00U
 #define PLL_OUT_MODE                0x03U
 #define RTC_1HZ                     0x00U
-#define ALT_5                       0x05U
-#define ALT_6                       0x06U
+#define ALT_5_CLKOUT                0x05U
+#define ALT_6_RTCCLKOUT             0x06U
 #define CORE_CLK_SEL                0x00U
+#define RTC_1_HZ                    0x00U
+#define FLEXBUS_CLKOUT              0x00U
 
 #define POWER_MODE_STATUS   (SMC->PMSTAT)
 #define OSC_STATUS          ((MCG->S & MCG_S_OSCINIT0_MASK) >> MCG_S_OSCINIT0_SHIFT)
@@ -244,14 +246,17 @@ static void clockConfigSetCoreClock()
 ******************************************************************************/
 static void clockConfigSetCLKOUTs()
 {
-    /* Set CLKOUT (PORT C PIN 3) for OSERCLK0 and RTCCLOCKOUT (PORT E PIN 26)
-     * for RTC32K. */
+    /* Set CLKOUT (PORT C PIN 3) for FlexBus CLKOUT and RTCCLOCKOUT (PORT E
+     * PIN 26) for RTC32K. */
     SIM->SOPT2 |= ((SIM->SOPT2 & ~SIM_SOPT2_CLKOUTSEL_MASK) |
-                    SIM_SOPT2_CLKOUTSEL(5) | SIM_SOPT2_CLKOUTSEL(0));
+                    SIM_SOPT2_CLKOUTSEL(FLEXBUS_CLKOUT) |
+                    SIM_SOPT2_RTCCLKOUTSEL(RTC_1_HZ));
     /* Enable CLKOUT and RTC_CLKOUT ports and mux functionality as needed */
     SIM->SCGC5 |= (SIM_SCGC5_PORTC(ENABLE) | SIM_SCGC5_PORTE(ENABLE));
-    PORTC->PCR[3] = ((PORTC->PCR[3] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_5));
-    PORTE->PCR[26] = ((PORTE->PCR[26] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_6));
+    PORTC->PCR[3] = ((PORTC->PCR[3] & ~PORT_PCR_MUX_MASK) |
+                      PORT_PCR_MUX(ALT_5_CLKOUT));
+    PORTE->PCR[26] = ((PORTE->PCR[26] & ~PORT_PCR_MUX_MASK) |
+                       PORT_PCR_MUX(ALT_6_RTCCLKOUT));
 }
 /******************************************************************************
 *   clockConfigSetSDHC0() - Private Function to set SDHC0 input frequency.
