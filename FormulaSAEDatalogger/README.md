@@ -14,3 +14,6 @@ Initial bulk completion of clock configuration module. In-line and function comm
 
 v0.3.0
 Started basic UART communication for GPS module. Since this is just to establish communications, writing a generic UART driver will be put off until later in the software development stage.
+
+v0.4.0
+Completed clock configuration. Hardware testing completed via CLKOUT and RTC_CLKOUT pins. System oscillator 12 MHz frequency, 1 Hz RTC counting, 60 MHz Flexbus clock directly observed and verified. Debugged previous hard faulting. Updated all comments in ClockConfig.c/.h.

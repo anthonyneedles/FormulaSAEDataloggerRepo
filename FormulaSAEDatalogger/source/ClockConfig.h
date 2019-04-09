@@ -1,5 +1,5 @@
 /******************************************************************************
-*   ClockConfig.h
+*   ClockConfig.c.
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -13,11 +13,10 @@
 *   Core/System Clock:      180MHz
 *   Bus Clock:              60MHz
 *   FlexBus/SDRAMC Clock:   60MHz
-*   MCGFFCLK:               375kHz
 *   Flash Clock:            25.71MHz
 *   OSCERCLK Clock:         12MHz
 *   LPO Clock:              1kHz
-*   RTC_CLKOUT:             1Hz
+*   RTC_CLKOUT (RTC1HzCLK): 1Hz
 *   CLKOUT (OSCERCLK)       12MHz
 *   SDHC Clock:             180MHz*
 *
@@ -25,7 +24,7 @@
 *   the SDHC max frequency of 50MHz. However, as specified in SDHC_SYSCT, this
 *   clock is further divided to produce a valid value.
 *
-*   Comments up to date as of: 03/17/2019
+*   Comments up to date as of: 04/08/2019
 *
 *   MCU: MK66FN2M0VLQ18R
 *

@@ -26,14 +26,20 @@
 *   Author: Anthony Needles
 ******************************************************************************/
 #include "MK66F18.h"
-#include "FreeRTOS.h"
-#include "task.h"
+//#include "FreeRTOS.h"
+//#include "task.h"
 #include "ClockConfig.h"
+//#include "clock_config.h"
+//#include "pin_mux.h"
 
 
-int main(void) {
+void main(void) {
+    volatile uint32_t test_int = 0;
 
-    void ClockConfigRun(void);
+    ClockConfigRun();
 
-    return 0 ;
+
+    while(1){
+        test_int++;
+    }
 }

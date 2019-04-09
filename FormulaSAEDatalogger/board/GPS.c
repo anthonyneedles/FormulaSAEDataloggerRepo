@@ -23,4 +23,6 @@ void GPSUART4Init()
                   UART_C1_PE(NO_PARITY_BIT) |
                   UART_C1_M(EIGHT_BIT_MODE));
     UART4->C2 |= (UART_C2_TE(ENABLE) | UART_C2_RE(ENABLE));
+
+    UART4->PFIFO = (uint8_t)(0x09U);
 }
