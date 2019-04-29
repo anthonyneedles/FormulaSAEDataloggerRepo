@@ -20,3 +20,6 @@ Completed clock configuration. Hardware testing completed via CLKOUT and RTC_CLK
 
 v0.5.0
 Completed writing initial Digital Output module. Tested and verified proper operation of code on hardware. More will need to be done for new board revision. Most code in FormulaSAEDatalogger.c is for testing.
+
+v0.5.1
+Completed Digital Output module for complete operation. Still need to test and verify in hardware. Added functionality through new private structure in DigitalOutput.c to handle pins of different PORT and GPIO block, such as PTA vs PTB. Any DOUT power port/gpio/pin and state port/gpio/pin change be changed to any other valid MK66F18 port/gpio/pin with no additional changes except ensuring new port clock is enabled in DigitalOutputInit(). 

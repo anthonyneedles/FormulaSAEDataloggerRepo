@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/27/2019
+*   Comments up to date as of: 04/29/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
@@ -56,12 +56,20 @@ typedef enum
 /******************************************************************************
 *   PRIVATE STRUCTURES
 ******************************************************************************/
+typedef struct PinID_t
+{
+    uint8_t num;
+    PORT_Type *port_base;
+    GPIO_Type *gpio_base;
+} PinID_t;
+
 typedef struct DigitalOut_t
 {
     OutName_t name;
-    uint8_t portA_pin_num;
-    OutState_t state;
+    PinID_t power_pin;
     OutPower_t power;
+    PinID_t state_pin;
+    OutState_t state;
 } DigitalOut_t;
 
 /******************************************************************************
@@ -72,21 +80,24 @@ void digitalOutputChange(DigitalOut_t);
 /******************************************************************************
 *   PRIVATE VARIABLES
 ******************************************************************************/
+/* This is the main configuration structure for the DOUTs. Be sure necessary
+ * PORT clock is enabled in DigitalOutputInit() if pins are changed. */
 static DigitalOut_t doutConfigs[NUM_OUTPUTS] =
 {
-    { DOUT1, 17U, OFF, FIVE_VOLTS },
-    { DOUT2, 16U, OFF, FIVE_VOLTS },
-    { DOUT3, 15U, OFF, FIVE_VOLTS },
-    { DOUT4, 14U, OFF, FIVE_VOLTS },
-    { DOUT5, 13U, OFF, FIVE_VOLTS },
-    { DOUT6, 12U, OFF, FIVE_VOLTS },
-    { DOUT7, 11U, OFF, FIVE_VOLTS },
-    { DOUT8, 10U, OFF, FIVE_VOLTS }
+    { DOUT1, { 17U, PORTA, GPIOA }, FIVE_VOLTS, {  1U, PORTB, GPIOB }, OFF },
+    { DOUT2, { 16U, PORTA, GPIOA }, FIVE_VOLTS, { 28U, PORTA, GPIOA }, OFF },
+    { DOUT3, { 15U, PORTA, GPIOA }, FIVE_VOLTS, {  0U, PORTB, GPIOB }, OFF },
+    { DOUT4, { 14U, PORTA, GPIOA }, FIVE_VOLTS, { 29U, PORTA, GPIOA }, OFF },
+    { DOUT5, { 13U, PORTA, GPIOA }, FIVE_VOLTS, { 27U, PORTA, GPIOA }, OFF },
+    { DOUT6, { 12U, PORTA, GPIOA }, FIVE_VOLTS, { 24U, PORTA, GPIOA }, OFF },
+    { DOUT7, { 11U, PORTA, GPIOA }, FIVE_VOLTS, { 26U, PORTA, GPIOA }, OFF },
+    { DOUT8, { 10U, PORTA, GPIOA }, FIVE_VOLTS, { 25U, PORTA, GPIOA }, OFF }
 };
 
 /******************************************************************************
 *   DigitalOutputInit() - Public function to initialize all digital outputs in
-*   OFF state and supplying 5V.
+*   OFF state and supplying 5V. All configuration settings are stored in
+*   doutConfigs structure.
 *
 *   Parameters: None
 *
@@ -94,22 +105,41 @@ static DigitalOut_t doutConfigs[NUM_OUTPUTS] =
 ******************************************************************************/
 void DigitalOutputInit()
 {
-    uint8_t pta_num;
+    uint8_t pin_num;
+    PORT_Type *port_base;
+    GPIO_Type *gpio_base;
 
-    /* Enable PORTA (pta) clock (all DOUT pins are in PORTA) */
+    /* Enable PORTA and PORTB clocks (all DOUT pins are in PORTA or PORTB). */
     SIM->SCGC5 |= SIM_SCGC5_PORTA(ENABLE);
+    SIM->SCGC5 |= SIM_SCGC5_PORTB(ENABLE);
 
     /* Configure all DOUT pin MUXs to ALT 1 (GPIO), and configure all GPIO as
-     * outputs. Sets all DOUT to initial state/power, which is OFF/5V */
+     * outputs. This is done for both the power and state pins for each DOUT,
+     * with port name/gpio name/pin number defined in DOUT config structure.
+     * Sets all DOUT pins to initial state/power, which is OFF/5V, as specified
+     * in DOUT config structure. */
     for(uint8_t dcount = 0; dcount < NUM_OUTPUTS; dcount++)
     {
-        pta_num = doutConfigs[dcount].portA_pin_num;
+        /* Power pin configuration */
+        pin_num = doutConfigs[dcount].power_pin.num;
+        port_base = doutConfigs[dcount].power_pin.port_base;
+        gpio_base = doutConfigs[dcount].power_pin.gpio_base;
 
-        PORTA->PCR[pta_num] = ((PORTA->PCR[pta_num] & ~PORT_PCR_MUX_MASK) |
-                                PORT_PCR_MUX(ALT_1_GPIO));
+        port_base->PCR[pin_num] = ((port_base->PCR[pin_num] & ~PORT_PCR_MUX_MASK) |
+                                   PORT_PCR_MUX(ALT_1_GPIO));
 
-        GPIOA->PDDR |= GPIO_PDDR_PDD(OUTPUT << pta_num);
+        gpio_base->PDDR |= GPIO_PDDR_PDD(OUTPUT << pin_num);
 
+        /* State pin configuration */
+        pin_num = doutConfigs[dcount].state_pin.num;
+        port_base = doutConfigs[dcount].state_pin.port_base;
+
+        port_base->PCR[pin_num] = ((port_base->PCR[pin_num] & ~PORT_PCR_MUX_MASK) |
+                                   PORT_PCR_MUX(ALT_1_GPIO));
+
+        gpio_base->PDDR |= GPIO_PDDR_PDD(OUTPUT << pin_num);
+
+        /* Set configurations */
         digitalOutputChange(doutConfigs[dcount]);
     }
 }
@@ -127,28 +157,39 @@ void DigitalOutputInit()
 ******************************************************************************/
 void digitalOutputChange(DigitalOut_t dout)
 {
-//    switch(dout.state)
-//    {
-//        case ON:
-//            GPIOA->PDOR |= GPIO_PDOR_PDO(ENABLE << dout.portA_pin_num);
-//            break;
-//
-//        case OFF:
-//            GPIOA->PDOR &= ~GPIO_PDOR_PDO(ENABLE << dout.portA_pin_num);
-//            break;
-//
-//        default:
-//            break;
-//    }
+    uint8_t pin_num;
+    GPIO_Type *gpio_base;
+
+    /* Write to output state pin */
+    pin_num = dout.state_pin.num;
+    gpio_base = dout.state_pin.gpio_base;
+
+    switch(dout.state)
+    {
+        case ON:
+            gpio_base->PDOR |= GPIO_PDOR_PDO(ENABLE << pin_num);
+            break;
+
+        case OFF:
+            gpio_base->PDOR &= ~GPIO_PDOR_PDO(ENABLE << pin_num);
+            break;
+
+        default:
+            break;
+    }
+
+    /* Write to output power pin */
+    pin_num = dout.power_pin.num;
+    gpio_base = dout.power_pin.gpio_base;
 
     switch(dout.power)
     {
         case FIVE_VOLTS:
-            GPIOA->PDOR &= ~GPIO_PDOR_PDO(ENABLE << dout.portA_pin_num);
+            gpio_base->PDOR &= ~GPIO_PDOR_PDO(ENABLE << pin_num);
             break;
 
         case TWELVE_VOLTS:
-            GPIOA->PDOR |= GPIO_PDOR_PDO(ENABLE << dout.portA_pin_num);
+            gpio_base->PDOR |= GPIO_PDOR_PDO(ENABLE << pin_num);
             break;
 
         default:
@@ -173,7 +214,8 @@ void DigitalOutputSet(DigitalOutMsg_t msg)
     /* Convert state/power message to individual state/power bits for each
      * DOUT (i.e. msg.state_field bit 0 corresponds to DOUT1's desired state,
      * msg.state_field bit 1 corresponds to DOUT2's state, etc.)
-     * A power bit of 1 corresponds to a power of 12V */
+     * A power bit of 1 corresponds to a power of 12V and a state bit of 1
+     * corresponds to an ON DOUT. */
     for(uint8_t dcount = 0; dcount < NUM_OUTPUTS; dcount++)
     {
         state_bit = ((msg.state_field >> dcount) & (uint8_t)BIT_0_MASK);

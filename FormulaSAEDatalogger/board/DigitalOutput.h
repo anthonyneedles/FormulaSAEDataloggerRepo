@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/27/2019
+*   Comments up to date as of: 04/29/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
@@ -32,8 +32,12 @@ typedef struct DigitalOutMsg_t
 } DigitalOutMsg_t;
 
 /******************************************************************************
+*   PUBLIC FUNCTION PROTOTYPES
+******************************************************************************/
+/******************************************************************************
 *   DigitalOutputInit() - Public function to initialize all digital outputs in
-*   OFF state and supplying 5V.
+*   OFF state and supplying 5V. All configuration settings are stored in
+*   doutConfigs structure.
 *
 *   Parameters: None
 *
