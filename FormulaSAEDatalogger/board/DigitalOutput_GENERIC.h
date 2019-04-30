@@ -1,5 +1,5 @@
 /******************************************************************************
-*   DigitalOutput.c
+*   DigitalOutput.h
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -12,10 +12,6 @@
 *   application of a digital output is to turn a dashboard service light on
 *   and off.
 *
-*   DigitalOutput_GENERIC.c/.h supports dynamically changing DOUT ports/pins,
-*   bit since the DOUT ports/pins are set, this module is used as it is much
-*   faster and smaller.
-*
 *   MCU: MK66FN2M0VLQ18R
 *
 *   Comments up to date as of: 04/29/2019
@@ -23,8 +19,8 @@
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
 ******************************************************************************/
-#ifndef DIGITALOUTPUT_H_
-#define DIGITALOUTPUT_H_
+#ifndef DIGITALOUTPUT_GENERIC_H_
+#define DIGITALOUTPUT_GENERIC_H_
 
 /******************************************************************************
 *   PUBLIC STRUCTURES
@@ -47,7 +43,7 @@ typedef struct DigitalOutMsg_t
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputInit(void);
+void DigitalOutputInit_GENERIC(void);
 
 /******************************************************************************
 *   DigitalOutputSet() - Public function to set digital output states and
@@ -55,12 +51,10 @@ void DigitalOutputInit(void);
 *
 *   Parameters:
 *
-*       DigitalOutMsg_t msg - Message structure received from telemetry unit
-*       with 8 bit state field (msg.state_field) and 8 bit power field
-*       (msg.power_field).
+*       DigitalOutMsg_t msg - Message structure received from telemetry unit.
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputSet(DigitalOutMsg_t);
+void DigitalOutputSet_GENERIC(DigitalOutMsg_t);
 
-#endif /* DIGITALOUTPUT_H_ */
+#endif /* DIGITALOUTPUT_GENERIC_H_ */
