@@ -24,7 +24,7 @@
 *   the SDHC max frequency of 50MHz. However, as specified in SDHC_SYSCT, this
 *   clock is further divided to produce a valid value.
 *
-*   Comments up to date as of: 04/08/2019
+*   Comments up to date as of: 05/01/2019
 *
 *   MCU: MK66FN2M0VLQ18R
 *
@@ -35,13 +35,13 @@
 #define CLOCKCONFIG_H_
 
 /******************************************************************************
-*   ClockConfigRun() - Public function to run all private clock configuration
+*   ClkCfgRun() - Public function to run all private clock configuration
 *   functions in valid order.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void ClockConfigRun(void);
+void ClkCfgRun(void);
 
 #endif /* CLOCKCONFIG_H_ */

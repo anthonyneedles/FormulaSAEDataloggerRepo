@@ -28,6 +28,7 @@
 #include "MK66F18.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 #include "ClockConfig.h"
 #include "DigitalOutput.h"
 
@@ -38,7 +39,7 @@ void ClockInitTask(void *pvParameters);
 
 void main(void) {
     volatile uint32_t test_int = 0;
-    DigitalOutMsg_t test_msg = {0xAA, 0xAA};
+    DigOutMsg_t test_msg = {0xAA, 0xAA};
 
 
     xTaskCreate(ClockInitTask,
@@ -47,12 +48,12 @@ void main(void) {
                 NULL,
                 1,
                 NULL);
-    ClockConfigRun();
-    DigitalOutputInit();
-    DigitalOutputSet(test_msg);
+    ClkCfgRun();
+    DigOutInit();
+    DigOutSet(test_msg);
     test_msg.power_field = 0x55;
     test_msg.state_field = 0x55;
-    DigitalOutputSet(test_msg);
+    DigOutSet(test_msg);
 
 
     vTaskStartScheduler();

@@ -26,24 +26,23 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/08/2019
+*   Comments up to date as of: 05/01/2019
 *
 *   Created on: 03/12/2019
 *   Author: Anthony Needles
 ******************************************************************************/
-#include "ClockConfig.h"
 #include "MK66F18.h"
-#include "FreeRTOS.h"
+#include "ClockConfig.h"
 /******************************************************************************
 *   Private function prototypes
 ******************************************************************************/
-static void clockConfigSetHSRun(void);
-static void clockConfigSetXtalRTC(void);
-static void clockConfigSetXtalOSC(void);
-static void clockConfigSetMCG(void);
-static void clockConfigSetCoreClock(void);
-static void clockConfigSetCLKOUTs(void);
-static void clockConfigSetSDHC0(void);
+static void clkcfgSetHSRun(void);
+static void clkcfgSetXtalRTC(void);
+static void clkcfgSetXtalOSC(void);
+static void clkcfgSetMCG(void);
+static void clkcfgSetCoreClock(void);
+static void clkcfgSetCLKOUTs(void);
+static void clkcfgSetSDHC0(void);
 /******************************************************************************
 *   Private Definitions
 ******************************************************************************/
@@ -88,31 +87,31 @@ static void clockConfigSetSDHC0(void);
  ******************************************************************************/
 extern uint32_t SystemCoreClock;
 /******************************************************************************
-*   ClockConfigRun() - Public function to run all private clock configuration
+*   ClkCfgRun() - Public function to run all private clock configuration
 *   functions in valid order.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void ClockConfigRun()
+void ClkCfgRun()
 {
-    clockConfigSetHSRun();
-    clockConfigSetXtalOSC();
-    clockConfigSetXtalRTC();
-    clockConfigSetMCG();
-    clockConfigSetCoreClock();
-    clockConfigSetCLKOUTs();
-    clockConfigSetSDHC0();
+    clkcfgSetHSRun();
+    clkcfgSetXtalOSC();
+    clkcfgSetXtalRTC();
+    clkcfgSetMCG();
+    clkcfgSetCoreClock();
+    clkcfgSetCLKOUTs();
+    clkcfgSetSDHC0();
 }
 /******************************************************************************
-*   clockConfigSetHSRun() - Private function to enable system for HSRUN mode.
+*   clkcfgSetHSRun() - Private function to enable system for HSRUN mode.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetHSRun()
+static void clkcfgSetHSRun()
 {
     /* Enable system to allow HSRUN mode. PMPROT can only be written to once
      * after any system reset */
@@ -123,7 +122,7 @@ static void clockConfigSetHSRun()
     while(POWER_MODE_STATUS != PWRMODE_HSRUN){}
 }
 /******************************************************************************
-*   clockConfigSetXtalRTC() - Private function to set RTC module for peripheral
+*   clkcfgSetXtalRTC() - Private function to set RTC module for peripheral
 *   output and enabling 32k oscillator. Must wait 1000ms before enabling time
 *   counter to ensure oscillator stabilization.
 *
@@ -131,7 +130,7 @@ static void clockConfigSetHSRun()
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetXtalRTC()
+static void clkcfgSetXtalRTC()
 {
     /* Allow access and interrupts for RTC. */
     SIM->SCGC6 |= SIM_SCGC6_RTC(ENABLE);
@@ -150,20 +149,20 @@ static void clockConfigSetXtalRTC()
     SIM->SCGC6 &= ~SIM_SCGC6_RTC(ENABLE);
 }
 /******************************************************************************
-*   clockConfigSetXtalOSC() - Private function to enable external reference
+*   clkcfgSetXtalOSC() - Private function to enable external reference
 *   clock in Connection 3 (external capacitors, internal feedback resistor).
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetXtalOSC()
+static void clkcfgSetXtalOSC()
 {
     /* Enables OSC to enable external reference clock. */
     OSC->CR |= OSC_CR_ERCLKEN(ENABLE);
 }
 /******************************************************************************
-*   clockConfigSetMCG() - Private function to configure the MCG for desired
+*   clkcfgSetMCG() - Private function to configure the MCG for desired
 *   operation of PEE (PLL Engaged External). An external source (external
 *   crystal & system oscillator) engaged to the PLL supplying MCGOUTCLK. This
 *   will achieve a clock value of 180MHz on MCGOUTCLK to provide the SIM.
@@ -172,7 +171,7 @@ static void clockConfigSetXtalOSC()
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetMCG()
+static void clkcfgSetMCG()
 {
     /* MCG comes out of reset in FEI (FLL Engaged Internal) mode. The desired
      * mode is PEE. The MCG must first transition from FEI to FBE (FLL Bypass
@@ -225,26 +224,26 @@ static void clockConfigSetMCG()
     while(CLK_MODE_STATUS != PLL_OUT_MODE){}
 }
 /******************************************************************************
-*   clockConfigSetCoreClock() - Private function to update project global value
+*   clkcfgSetCoreClock() - Private function to update project global value
 *   of system core clock. This variable is used in FreeRTOSConfig.h.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetCoreClock()
+static void clkcfgSetCoreClock()
 {
     SystemCoreClock = CORE_CLOCK_HZ;
 }
 /******************************************************************************
-*   clockConfigSetCLKOUTs() - Private function to set CLKOUT pins for system
+*   clkcfgSetCLKOUTs() - Private function to set CLKOUT pins for system
 *   debugging.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetCLKOUTs()
+static void clkcfgSetCLKOUTs()
 {
     /* Set CLKOUT (PORT C PIN 3) for FlexBus CLKOUT and RTCCLOCKOUT (PORT E
      * PIN 26) for RTC32K. */
@@ -259,13 +258,13 @@ static void clockConfigSetCLKOUTs()
                        PORT_PCR_MUX(ALT_6_RTCCLKOUT));
 }
 /******************************************************************************
-*   clockConfigSetSDHC0() - Private Function to set SDHC0 input frequency.
+*   clkcfgSetSDHC0() - Private Function to set SDHC0 input frequency.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-static void clockConfigSetSDHC0()
+static void clkcfgSetSDHC0()
 {
     /* Select core clock as input to SDHC0. */
     SIM->SOPT2 = ((SIM->SOPT2 & ~SIM_SOPT2_SDHCSRC_MASK) |

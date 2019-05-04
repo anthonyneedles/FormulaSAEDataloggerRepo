@@ -206,7 +206,7 @@ void digitalOutputChange_GENERIC(DigitalOut_t dout)
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputSet_GENERIC(DigitalOutMsg_t msg)
+void DigitalOutputSet_GENERIC(DigOutMsg_t msg)
 {
     uint8_t state_bit;
     uint8_t power_bit;

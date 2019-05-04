@@ -29,7 +29,7 @@ typedef struct DigitalOutMsg_t
 {
     uint8_t state_field;
     uint8_t power_field;
-} DigitalOutMsg_t;
+} DigOutMsg_t;
 
 /******************************************************************************
 *   PUBLIC FUNCTION PROTOTYPES
@@ -55,6 +55,6 @@ void DigitalOutputInit_GENERIC(void);
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputSet_GENERIC(DigitalOutMsg_t);
+void DigitalOutputSet_GENERIC(DigOutMsg_t);
 
 #endif /* DIGITALOUTPUT_GENERIC_H_ */

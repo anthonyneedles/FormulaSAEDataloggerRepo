@@ -25,4 +25,7 @@ v0.5.1
 Completed Digital Output module for complete operation. Still need to test and verify in hardware. Added functionality through new private structure in DigitalOutput.c to handle pins of different PORT and GPIO block, such as PTA vs PTB. Any DOUT power port/gpio/pin and state port/gpio/pin change be changed to any other valid MK66F18 port/gpio/pin with no additional changes except ensuring new port clock is enabled in DigitalOutputInit().
 
 v0.5.2
-Completed new Digital Output module that is faster, smaller, and easier to read. DigitalOuput_GENERIC (previous Digital Output module) allows dynamically changing ports/pins, but since the DOUT ports/pins are fixed this is unnecessary and provides a complete solution to a simple problem. Still need to test and verify in hardware.
+Completed new Digital Output module that is faster, smaller, and easier to read. DigitalOuput_GENERIC (previous Digital Output module) allows dynamically changing ports/pins, but since the DOUT ports/pins are fixed this is unnecessary and provides a complex solution to a simple problem. Still need to test and verify in hardware.
+
+v0.6.0
+Started Analog Input module. Established initial public setting function. Have yet to test in hardware. Changed naming conventions for DigitalOutput.c/.h and ClockConfig.c/.h: public function/variable names start with mixed case module abbreviation, while private function/variable names start with lower case module abbreviation. This will be the norm as development continues.

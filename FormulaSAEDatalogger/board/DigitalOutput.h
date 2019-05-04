@@ -29,38 +29,38 @@
 /******************************************************************************
 *   PUBLIC STRUCTURES
 ******************************************************************************/
-typedef struct DigitalOutMsg_t
+typedef struct DigOutMsg_t
 {
     uint8_t state_field;
     uint8_t power_field;
-} DigitalOutMsg_t;
+} DigOutMsg_t;
 
 /******************************************************************************
 *   PUBLIC FUNCTION PROTOTYPES
 ******************************************************************************/
 /******************************************************************************
-*   DigitalOutputInit() - Public function to initialize all digital outputs in
-*   OFF state and supplying 5V. All configuration settings are stored in
+*   DigOutInit() - Public function to initialize all digital outputs in OFF
+*   state and supplying 5V. All configuration settings are stored in
 *   doutConfigs structure.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputInit(void);
+void DigOutInit(void);
 
 /******************************************************************************
-*   DigitalOutputSet() - Public function to set digital output states and
-*   powers via requested message structure.
+*   DigOutSet() - Public function to set digital output states and powers via
+*   requested message structure.
 *
 *   Parameters:
 *
-*       DigitalOutMsg_t msg - Message structure received from telemetry unit
-*       with 8 bit state field (msg.state_field) and 8 bit power field
+*       DigOutMsg_t msg - Message structure received from telemetry unit with
+*       8 bit state field (msg.state_field) and 8 bit power field
 *       (msg.power_field).
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputSet(DigitalOutMsg_t);
+void DigOutSet(DigOutMsg_t);
 
 #endif /* DIGITALOUTPUT_H_ */

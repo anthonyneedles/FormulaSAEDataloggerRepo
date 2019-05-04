@@ -18,14 +18,12 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/29/2019
+*   Comments up to date as of: 05/01/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
 ******************************************************************************/
 #include "MK66F18.h"
-#include "FreeRTOS.h"
-#include "task.h"
 #include "DigitalOutput.h"
 
 /******************************************************************************
@@ -35,10 +33,6 @@
 #define ALT_1_GPIO                  0x01U
 #define OUTPUT                      0x01U
 #define BIT_0_MASK        ((uint8_t)0x01U)
-#define OFF                         0x00U
-#define ON                          0x01U
-#define FIVE_VOLTS                  0x00U
-#define TWELVE_VOLTS                0x01U
 
 /* DOUT pin numbers, DOUT1 and DOUT3 are PORTB, all else are PORTA */
 #define DOUT1_STATE_PIN_NUM            1U
@@ -96,15 +90,15 @@
 #define DOUT8_BIT(x) (((x) >> ((uint8_t)7U)) & BIT_0_MASK)
 
 /******************************************************************************
-*   DigitalOutputInit() - Public function to initialize all digital outputs in
-*   OFF state and supplying 5V. All configuration settings are stored in
+*   DigOutInit() - Public function to initialize all digital outputs in OFF
+*   state and supplying 5V. All configuration settings are stored in
 *   doutConfigs structure.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputInit()
+void DigOutInit()
 {
     /* Enable PORTA and PORTB clocks (all DOUT pins are in PORTA or PORTB). */
     SIM->SCGC5 |= SIM_SCGC5_PORTA(ENABLE);
@@ -133,42 +127,38 @@ void DigitalOutputInit()
     PORTA->PCR[DOUT7_STATE_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
     PORTA->PCR[DOUT8_STATE_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
 
-    GPIOA->PDDR |= GPIO_PDDR_PDD(
-                                (OUTPUT << DOUT1_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT2_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT3_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT4_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT5_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT6_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT7_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT8_POWER_PIN_NUM) |
-                                (OUTPUT << DOUT2_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT4_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT5_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT6_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT7_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT8_STATE_PIN_NUM)
-                                );
+    GPIOA->PDDR |= GPIO_PDDR_PDD((OUTPUT << DOUT1_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT2_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT3_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT4_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT5_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT6_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT7_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT8_POWER_PIN_NUM) |
+                                 (OUTPUT << DOUT2_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT4_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT5_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT6_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT7_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT8_STATE_PIN_NUM));
 
-    GPIOB->PDDR |= GPIO_PDDR_PDD(
-                                (OUTPUT << DOUT1_STATE_PIN_NUM) |
-                                (OUTPUT << DOUT3_STATE_PIN_NUM)
-                                );
+    GPIOB->PDDR |= GPIO_PDDR_PDD((OUTPUT << DOUT1_STATE_PIN_NUM) |
+                                 (OUTPUT << DOUT3_STATE_PIN_NUM));
 }
 
 /******************************************************************************
-*   DigitalOutputSet() - Public function to set digital output states and
-*   powers via requested message structure.
+*   DigOutSet() - Public function to set digital output states and powers via
+*   requested message structure.
 *
 *   Parameters:
 *
-*       DigitalOutMsg_t msg - Message structure received from telemetry unit
-*       with 8 bit state field (msg.state_field) and 8 bit power field
+*       DigOutMsg_t msg - Message structure received from telemetry unit with
+*       8 bit state field (msg.state_field) and 8 bit power field
 *       (msg.power_field).
 *
 *   Return: None
 ******************************************************************************/
-void DigitalOutputSet(DigitalOutMsg_t msg)
+void DigOutSet(DigOutMsg_t msg)
 {
     /* Convert state/power message to individual state/power bits for each
      * DOUT (i.e. msg.state_field bit 0 corresponds to DOUT1's desired state,
