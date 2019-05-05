@@ -29,3 +29,6 @@ Completed new Digital Output module that is faster, smaller, and easier to read.
 
 v0.6.0
 Started Analog Input module. Established initial public setting function. Have yet to test in hardware. Changed naming conventions for DigitalOutput.c/.h and ClockConfig.c/.h: public function/variable names start with mixed case module abbreviation, while private function/variable names start with lower case module abbreviation. This will be the norm as development continues.
+
+v0.6.1
+Nearly completed writing Analog Input module, including ADC/PIT initialization. Tested power and conditioning section in hardware, as well as observing PIT1 frequency (8kHz). Need to test ADC in hardware. Updated most comments in Analog In module. 

@@ -18,7 +18,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/01/2019
+*   Comments up to date as of: 05/04/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
@@ -27,7 +27,7 @@
 #include "DigitalOutput.h"
 
 /******************************************************************************
-*   PRIVATE DEFINITIONS
+*   Private Definitions
 ******************************************************************************/
 #define ENABLE                      0x01U
 #define ALT_1_GPIO                  0x01U
@@ -54,10 +54,20 @@
 #define DOUT7_POWER_PIN_NUM           11U
 #define DOUT8_POWER_PIN_NUM           10U
 
+/* Bit # corresponding to certain DOUT in 8-bit state/power field message */
+#define DOUT1_BIT_NUM        ((uint8_t)0U)
+#define DOUT2_BIT_NUM        ((uint8_t)1U)
+#define DOUT3_BIT_NUM        ((uint8_t)2U)
+#define DOUT4_BIT_NUM        ((uint8_t)3U)
+#define DOUT5_BIT_NUM        ((uint8_t)4U)
+#define DOUT6_BIT_NUM        ((uint8_t)5U)
+#define DOUT7_BIT_NUM        ((uint8_t)6U)
+#define DOUT8_BIT_NUM        ((uint8_t)7U)
+
 /******************************************************************************
-*   PRIVATE MACROS
+*   Private Macros
 ******************************************************************************/
-/* Macros accepting ON/OFF (1/0) to either set or clear DOUT state pin*/
+/* Macros accepting OFF/ON (0/1) to either set or clear DOUT state pin*/
 #define DOUT1_STATE_SET(x) (GPIOB->PDOR |= ((x) << DOUT1_STATE_PIN_NUM))
 #define DOUT2_STATE_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_STATE_PIN_NUM))
 #define DOUT3_STATE_SET(x) (GPIOB->PDOR |= ((x) << DOUT1_STATE_PIN_NUM))
@@ -67,7 +77,7 @@
 #define DOUT7_STATE_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_STATE_PIN_NUM))
 #define DOUT8_STATE_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_STATE_PIN_NUM))
 
-/* Macros accepting FIVE_VOLTS/TWELVE_VOLTS (1/0) to either set or clear DOUT
+/* Macros accepting FIVE_VOLTS/TWELVE_VOLTS (0/1) to either set or clear DOUT
  * power pin*/
 #define DOUT1_POWER_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_POWER_PIN_NUM))
 #define DOUT2_POWER_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_POWER_PIN_NUM))
@@ -79,15 +89,15 @@
 #define DOUT8_POWER_SET(x) (GPIOA->PDOR |= ((x) << DOUT1_POWER_PIN_NUM))
 
 /* Macros accepting 8 bit field to find and isolate DOUT's relevant bit and
- * shift over to bit 0 position */
-#define DOUT1_BIT(x) (((x) >> ((uint8_t)0U)) & BIT_0_MASK)
-#define DOUT2_BIT(x) (((x) >> ((uint8_t)1U)) & BIT_0_MASK)
-#define DOUT3_BIT(x) (((x) >> ((uint8_t)2U)) & BIT_0_MASK)
-#define DOUT4_BIT(x) (((x) >> ((uint8_t)3U)) & BIT_0_MASK)
-#define DOUT5_BIT(x) (((x) >> ((uint8_t)4U)) & BIT_0_MASK)
-#define DOUT6_BIT(x) (((x) >> ((uint8_t)5U)) & BIT_0_MASK)
-#define DOUT7_BIT(x) (((x) >> ((uint8_t)6U)) & BIT_0_MASK)
-#define DOUT8_BIT(x) (((x) >> ((uint8_t)7U)) & BIT_0_MASK)
+ * shift over to bit 0 position for relevant SET function */
+#define DOUT1_BIT(x) (((x) >> DOUT1_BIT_NUM) & BIT_0_MASK)
+#define DOUT2_BIT(x) (((x) >> DOUT2_BIT_NUM) & BIT_0_MASK)
+#define DOUT3_BIT(x) (((x) >> DOUT3_BIT_NUM) & BIT_0_MASK)
+#define DOUT4_BIT(x) (((x) >> DOUT4_BIT_NUM) & BIT_0_MASK)
+#define DOUT5_BIT(x) (((x) >> DOUT5_BIT_NUM) & BIT_0_MASK)
+#define DOUT6_BIT(x) (((x) >> DOUT6_BIT_NUM) & BIT_0_MASK)
+#define DOUT7_BIT(x) (((x) >> DOUT7_BIT_NUM) & BIT_0_MASK)
+#define DOUT8_BIT(x) (((x) >> DOUT8_BIT_NUM) & BIT_0_MASK)
 
 /******************************************************************************
 *   DigOutInit() - Public function to initialize all digital outputs in OFF
@@ -181,5 +191,3 @@ void DigOutSet(DigOutMsg_t msg)
     DOUT7_POWER_SET(DOUT7_BIT(msg.power_field));
     DOUT8_POWER_SET(DOUT8_BIT(msg.power_field));
 }
-
-

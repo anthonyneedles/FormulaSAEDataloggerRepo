@@ -27,7 +27,7 @@
 #define DIGITALOUTPUT_H_
 
 /******************************************************************************
-*   PUBLIC STRUCTURES
+*   Public Definitions
 ******************************************************************************/
 typedef struct DigOutMsg_t
 {
@@ -36,7 +36,7 @@ typedef struct DigOutMsg_t
 } DigOutMsg_t;
 
 /******************************************************************************
-*   PUBLIC FUNCTION PROTOTYPES
+*   Public Function Prototypes
 ******************************************************************************/
 /******************************************************************************
 *   DigOutInit() - Public function to initialize all digital outputs in OFF

@@ -9,13 +9,14 @@
 *   functions to set the power supply (5V/12V) provided to the 4 analog
 *   sensors as well as the required input conditioning MUX selection. The
 *   supplies are rated to supply a maximum of 20mA a either 5V or 12V per
-*   sensor.
+*   sensor. The analog signals will be measured via ADC1 channels, with PIT1
+*   providing hardware triggering at 8kHz.
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/29/2019
+*   Comments up to date as of: 05/04/2019
 *
-*   Created on: 05/01/2019
+*   Created on: 04/29/2019
 *   Author: Anthony Needles
 ******************************************************************************/
 #ifndef ANALOGINPUT_H_
@@ -28,7 +29,10 @@ typedef struct AnlgInMsg_t
 } AnlgInMsg_t;
 
 /******************************************************************************
-*   AnlgInInit() - Public function to
+*   AnlgInInit() - Public function to configure all GPIO used as power and
+*   conditioning selects as outputs. Initializes Analog In data structure and
+*   creates Mutex to protect data structure. Also initializes PIT1 to trigger
+*   ADC1 at 8kHz. Configures and calibrates ADC1.
 *
 *   Parameters: None
 *
@@ -37,7 +41,9 @@ typedef struct AnlgInMsg_t
 void AnlgInInit(void);
 
 /******************************************************************************
-*   AnlgInSet() - Public function to
+*   AnlgInSet() - Public function to set power and conditioning pins to achieve
+*   requested results from received user message. Saves the new Analog In data
+*   from message in Mutex protected private data structure.
 *
 *   Parameters:
 *
@@ -57,5 +63,15 @@ void AnlgInInit(void);
 *   Return: None
 ******************************************************************************/
 void AnlgInSet(AnlgInMsg_t);
+
+/******************************************************************************
+*   anlginCalibrateADC1() - Private function that calibrates ADC1 after reset
+*   and before any conversion are initiated.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+void PIT1_IRQHandler(void);
 
 #endif /* ANALOGINPUT_H_ */

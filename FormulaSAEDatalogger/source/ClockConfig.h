@@ -35,6 +35,9 @@
 #define CLOCKCONFIG_H_
 
 /******************************************************************************
+*   Public Function Prototypes
+******************************************************************************/
+/******************************************************************************
 *   ClkCfgRun() - Public function to run all private clock configuration
 *   functions in valid order.
 *

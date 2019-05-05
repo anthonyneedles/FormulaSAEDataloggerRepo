@@ -31,72 +31,53 @@
 #include "semphr.h"
 #include "ClockConfig.h"
 #include "DigitalOutput.h"
+#include "AnalogInput.h"
 
-#define ENABLE                      0x01U
-#define ALT_1_GPIO                  0x01U
-
-void ClockInitTask(void *pvParameters);
+//void ClockInitTask(void *pvParameters);
 
 void main(void) {
     volatile uint32_t test_int = 0;
-    DigOutMsg_t test_msg = {0xAA, 0xAA};
+//    DigOutMsg_t test_msg_dout = {0xAA, 0xAA};
+//    AnlgInMsg_t test_msg_ain = {0x5B, 0x55AA55AA};
 
+//    DigOutInit();
+//    DigOutSet(test_msg_dout);
+//    test_msg_dout.power_field = 0x55;
+//    test_msg_dout.state_field = 0x55;
+//    DigOutSet(test_msg_dout);
 
-    xTaskCreate(ClockInitTask,
-                "Clock Init Task",
-                256,
-                NULL,
-                1,
-                NULL);
+//    AnlgInSet(test_msg_ain);
+//    test_msg_ain.power_state_field = 0x55;
+//    test_msg_ain.sampling_rate_field = 0xAA55AA55;
+//    AnlgInSet(test_msg_ain);
+
+//    xTaskCreate(ClockInitTask,
+//                "Clock Init Task",
+//                256,
+//                NULL,
+//                1,
+//                NULL);
+
     ClkCfgRun();
-    DigOutInit();
-    DigOutSet(test_msg);
-    test_msg.power_field = 0x55;
-    test_msg.state_field = 0x55;
-    DigOutSet(test_msg);
 
 
-    vTaskStartScheduler();
-
-    //DOUTP CONFIG TEST START
+    AnlgInInit();
 
 
-
-    //DOUTP CONFIG TEST END
-
-    //AINP CONFIG TEST START
-
-//    SIM->SCGC5 |= SIM_SCGC5_PORTB(ENABLE);
-//    PORTB->PCR[23] = ((PORTB->PCR[23] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_1_GPIO));
-//    GPIOB->PDDR |= GPIO_PDDR_PDD((0x01 << 23));
-//    GPIOB->PDOR |= GPIO_PDOR_PDO((0x01 << 23));
-//    GPIOB->PDOR &= ~GPIO_PDOR_PDO((0x01 << 23));
-
-    //AINP CONFIG TEST END
-
-    //AINC CONFIG TEST START
-
-//    SIM->SCGC5 |= SIM_SCGC5_PORTC(ENABLE);
-//    PORTC->PCR[12] = ((PORTC->PCR[12] & ~PORT_PCR_MUX_MASK) | PORT_PCR_MUX(ALT_1_GPIO));
-//    GPIOC->PDDR |= GPIO_PDDR_PDD((0x01 << 12));
-//    GPIOC->PDOR |= GPIO_PDOR_PDO((0x01 << 12));
-//    GPIOC->PDOR &= ~GPIO_PDOR_PDO((0x01 << 12));
-
-    //AINC CONFIG TEST END
-
+//    vTaskStartScheduler();
     while(1){
         test_int++;
     }
 }
 
-void ClockInitTask(void *pvParameters)
-{
-    volatile uint32_t test_int = 0;
-    while(1)
-    {
-        while(1){
-            test_int++;
-        }
-    }
-    vTaskDelete(NULL);
-}
+//void ClockInitTask(void *pvParameters)
+//{
+//    volatile uint32_t test_int = 0;
+//    while(1)
+//    {
+//        while(1){
+//            test_int++;
+//        }
+//    }
+//    vTaskDelete(NULL);
+//}

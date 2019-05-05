@@ -33,8 +33,9 @@
 ******************************************************************************/
 #include "MK66F18.h"
 #include "ClockConfig.h"
+
 /******************************************************************************
-*   Private function prototypes
+*   Private Function Prototypes
 ******************************************************************************/
 static void clkcfgSetHSRun(void);
 static void clkcfgSetXtalRTC(void);
@@ -43,6 +44,7 @@ static void clkcfgSetMCG(void);
 static void clkcfgSetCoreClock(void);
 static void clkcfgSetCLKOUTs(void);
 static void clkcfgSetSDHC0(void);
+
 /******************************************************************************
 *   Private Definitions
 ******************************************************************************/
@@ -82,10 +84,12 @@ static void clkcfgSetSDHC0(void);
 #define PLLS_SOURCE_STATUS  ((MCG->S & MCG_S_PLLST_MASK) >> MCG_S_PLLST_SHIFT)
 #define PLL_LOCK_STATUS     ((MCG->S & MCG_S_LOCK0_MASK) >> MCG_S_LOCK0_SHIFT)
 #define CLK_MODE_STATUS     ((MCG->S & MCG_S_CLKST_MASK) >> MCG_S_CLKST_SHIFT)
+
 /*******************************************************************************
- * Variables
+ * Global Variables
  ******************************************************************************/
 extern uint32_t SystemCoreClock;
+
 /******************************************************************************
 *   ClkCfgRun() - Public function to run all private clock configuration
 *   functions in valid order.
