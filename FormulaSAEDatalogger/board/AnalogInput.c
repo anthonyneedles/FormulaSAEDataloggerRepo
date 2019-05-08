@@ -23,11 +23,14 @@
 #include "AnalogInput.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include "task.h"
 
 /******************************************************************************
 *   Private Function Prototypes
 ******************************************************************************/
-void anlginCalibrateADC1(void);
+static void anlginCalibrateADC1(void);
+
+static void anlginSamplerTask(void *pvParameters);
 
 /******************************************************************************
 *   Private Definitions
@@ -38,9 +41,8 @@ void anlginCalibrateADC1(void);
 #define OUTPUT                      0x01U
 #define BIT_0_MASK        ((uint8_t)0x01U)
 #define BYTE_0_MASK      ((uint32_t)0xFFU)
-#define TIMEOUT_TICKS                  5U
 #define PIT1                        0x01U
-#define PIT_8KHZ_LDVAL              7499U
+#define PIT_8KHZ_LDVAL         749999999U
 #define PIT1_TRG                    0x05U
 #define BUS_CLK                     0x00U
 #define MODE_12BIT                  0x01U
@@ -51,6 +53,11 @@ void anlginCalibrateADC1(void);
 #define HW_TRG                      0x01U
 #define SINGLE_ENDED                0x00U
 
+/* Task parameters */
+#define ANLGINSAMPLERTASK_PRIORITY     5U
+#define ANLGINSAMPLERTASK_STKSIZE    256U
+
+/* Register Flags */
 #define COCO_FLAG ((ADC1->SC1[0] & ADC_SC1_COCO_MASK) >> ADC_SC1_COCO_SHIFT)
 #define CALI_FAIL_FLAG ((ADC1->SC3 & ADC_SC3_CALF_MASK) >> ADC_SC3_CALF_SHIFT)
 
@@ -72,20 +79,21 @@ void anlginCalibrateADC1(void);
 #define AIN3_POWER_BIT_NUM   ((uint8_t)2U)
 #define AIN4_POWER_BIT_NUM   ((uint8_t)3U)
 #define AIN1_STATE_BIT_NUM   ((uint8_t)4U)
-#define AIN2_STATE_BIT_NU    ((uint8_t)5U)
-#define AIN3_STATE_BIT_NM    ((uint8_t)6U)
-#define AIN4_STATE_BIT_UM    ((uint8_t)7U)
+#define AIN2_STATE_BIT_NUM   ((uint8_t)5U)
+#define AIN3_STATE_BIT_NUM   ((uint8_t)6U)
+#define AIN4_STATE_BIT_NUM   ((uint8_t)7U)
 
+/* Bit offset for each AIN sampling rate position in SR message */
 #define AIN1_SR_OFFSET      ((uint32_t)0U)
 #define AIN2_SR_OFFSET      ((uint32_t)8U)
 #define AIN3_SR_OFFSET     ((uint32_t)16U)
 #define AIN4_SR_OFFSET     ((uint32_t)24U)
 
+/* ADC1 channels for each AIN*/
 #define AIN1_SIG_CHNL                  5U
 #define AIN2_SIG_CHNL                  4U
 #define AIN3_SIG_CHNL                  7U
 #define AIN4_SIG_CHNL                  6U
-
 
 /* Structure definition for Analog Input data and configurations */
 typedef struct AnlgInData_t
@@ -151,11 +159,15 @@ typedef struct AnlgInData_t
 static AnlgInData_t anlginCurrentData;
 
 /******************************************************************************
-*   Private Semaphores
+*   Private Handles
 ******************************************************************************/
 /* Mutex key that will protect anlginCurrentData structure. Must be pended on
  * if writing/reading anlginCurrentData is desired to ensure synchronization */
 static SemaphoreHandle_t anlginCurrentDataKey;
+
+/* Task handle for Analog In sampler task, used by ADC1_ISRHandler() to post
+ * task notification */
+static TaskHandle_t anlginSamplerTaskHandle = NULL;
 
 /******************************************************************************
 *   AnlgInInit() - Public function to configure all GPIO used as power and
@@ -169,6 +181,8 @@ static SemaphoreHandle_t anlginCurrentDataKey;
 ******************************************************************************/
 void AnlgInInit()
 {
+    BaseType_t task_create_return;
+
     SIM->SCGC5 |= SIM_SCGC5_PORTB(ENABLE);
     SIM->SCGC5 |= SIM_SCGC5_PORTC(ENABLE);
 
@@ -199,11 +213,21 @@ void AnlgInInit()
     anlginCurrentData.ain3_data = (uint16_t)0x0000;
     anlginCurrentData.ain4_data = (uint16_t)0x0000;
 
-    /* Create anlginCurrentDataKey Mutex */
+    /* Create Analog In current data structure Mutex */
     anlginCurrentDataKey = xSemaphoreCreateMutex();
+    while(anlginCurrentDataKey == NULL){ /* Error trap */ }
 
-    /* Error trap */
-    if(anlginCurrentDataKey == NULL){}
+    /* Create Analog In sampler task Mutex */
+    task_create_return = xTaskCreate(anlginSamplerTask,
+                                     "Analog In Sampler Task",
+                                     ANLGINSAMPLERTASK_STKSIZE,
+                                     NULL,
+                                     ANLGINSAMPLERTASK_PRIORITY,
+                                     &anlginSamplerTaskHandle);
+
+    while(task_create_return == pdFAIL){ /* Error trap */ }
+
+
 
     /* PIT1 initialization for 125us period, 8kHz trigger frequency */
     SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
@@ -215,21 +239,60 @@ void AnlgInInit()
      * conversions, long sampling, ADxxB channels mux, HW triggering, enabled
      * COCO interrupts, single ended signals, and AIN1 as the initial channel.
      * ADC1 is calibrated in the middle of initialization as to achieve
-     * specified accuracy. (Must be done before any conversions are started. */
+     * specified accuracy (must be done before any conversions are started). */
     SIM->SCGC3 |= SIM_SCGC3_ADC1(ENABLE);
+
     SIM->SOPT7 = ((SIM->SOPT7 & ~SIM_SOPT7_ADC1TRGSEL_MASK) |
                    SIM_SOPT7_ADC1TRGSEL(PIT1_TRG) |
                    SIM_SOPT7_ADC1ALTTRGEN(ENABLE));
+
     ADC1->CFG1 = ADC_CFG1_ADICLK(BUS_CLK) | ADC_CFG1_MODE(MODE_12BIT) |
                  ADC_CFG1_ADLSMP(LONG_SAMPLES) | ADC_CFG1_ADIV(CLK_DIV_8);
+
     ADC1->CFG2 = ADC_CFG2_MUXSEL(B_CHNLS);
-
-    anlginCalibrateADC1();
-
+//    anlginCalibrateADC1();
     ADC1->SC2 = ADC_SC2_ADTRG(HW_TRG);
+
     ADC1->SC1[0] = ADC_SC1_AIEN(ENABLE) | ADC_SC1_DIFF(SINGLE_ENDED) |
                    ADC_SC1_ADCH(AIN1_SIG_CHNL);
+
+    /* Enable ADC1 interrupts (for COCO ISR) */
+    NVIC_SetPriority(ADC1_IRQn, 2U);
+    NVIC_ClearPendingIRQ(ADC1_IRQn);
+    NVIC_EnableIRQ(ADC1_IRQn);
 }
+
+/******************************************************************************
+*   anlginSamplerTask() -
+*
+*   Parameters:.
+*
+*   Return: None
+******************************************************************************/
+static void anlginSamplerTask(void *pvParameters)
+{
+//    const TickType_t NOTIF_BLOCK_TIME = pdMS_TO_TICKS( 2000UL );
+//    const TickType_t MUTEX_BLOCK_TIME = pdMS_TO_TICKS( 1UL );
+    uint32_t notify_count;
+    BaseType_t take_return;
+
+    while(1)
+    {
+        notify_count = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+
+        while(notify_count == 0){ /*Error trap, task notify timed out */ }
+
+        take_return = xSemaphoreTake(anlginCurrentDataKey, portMAX_DELAY);
+
+        while(take_return == pdFAIL){ /*Error trap, Mutex key never available */ }
+
+        anlginCurrentData.ain1_data = ((uint16_t)(ADC1->R[0]));
+
+        xSemaphoreGive(anlginCurrentDataKey);
+    }
+}
+
+
 /******************************************************************************
 *   AnlgInSet() - Public function to set power and conditioning pins to achieve
 *   requested results from received user message. Saves the new Analog In data
@@ -247,13 +310,14 @@ void AnlgInInit()
 *       msg.power_state_field[4:7] corresponds to AIN[1:4] state, with a bit of
 *       0 representing a non-active sensor input (1 = active).
 *
-*       msg.sampling_rate_field[0:7] corresponds to AIN1 sampling rate,
+*       msg.sampling_rate_field[0:7] corresponds to AIN1 sampling rate, and
 *       msg.sampling_rate_field[8:15] corresponds to AIN2 sampling rate, etc.
 *
 *   Return: None
 ******************************************************************************/
 void AnlgInSet(AnlgInMsg_t msg)
 {
+    BaseType_t take_return;
     /* Convert state/power message to individual conditioning/power/state bits
      * for each AIN */
     AIN1_POWER_SET(AIN1_POWER_BIT(msg.power_state_field));
@@ -267,27 +331,27 @@ void AnlgInSet(AnlgInMsg_t msg)
     AIN4_COND_SET(AIN4_COND_BIT(msg.power_state_field));
 
     /* Pend on Mutex to update data structure */
-    if(xSemaphoreTake(anlginCurrentDataKey, (TickType_t)TIMEOUT_TICKS) == pdTRUE)
-    {
-        anlginCurrentData.power_state_field = msg.power_state_field;
-        anlginCurrentData.ain1_samp_rate = AIN1_SAMP_RATE(msg.sampling_rate_field);
-        anlginCurrentData.ain2_samp_rate = AIN2_SAMP_RATE(msg.sampling_rate_field);
-        anlginCurrentData.ain3_samp_rate = AIN3_SAMP_RATE(msg.sampling_rate_field);
-        anlginCurrentData.ain4_samp_rate = AIN4_SAMP_RATE(msg.sampling_rate_field);
+    take_return = xSemaphoreTake(anlginCurrentDataKey, portMAX_DELAY);
+    while(take_return == pdFAIL){ /* Error trap, Mutex key never available */ };
 
-        xSemaphoreGive(anlginCurrentDataKey);
-    } else{ /*Error trap, Mutex key never available */ }
+    anlginCurrentData.power_state_field = msg.power_state_field;
+    anlginCurrentData.ain1_samp_rate = AIN1_SAMP_RATE(msg.sampling_rate_field);
+    anlginCurrentData.ain2_samp_rate = AIN2_SAMP_RATE(msg.sampling_rate_field);
+    anlginCurrentData.ain3_samp_rate = AIN3_SAMP_RATE(msg.sampling_rate_field);
+    anlginCurrentData.ain4_samp_rate = AIN4_SAMP_RATE(msg.sampling_rate_field);
+
+    xSemaphoreGive(anlginCurrentDataKey);
 }
 
 /******************************************************************************
 *   anlginCalibrateADC1() - Private function that calibrates ADC1 after reset
-*   and before any conversion are initiated.
+*   and before any conversions are initiated.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void anlginCalibrateADC1()
+static void anlginCalibrateADC1()
 {
    uint16_t calibration_var;
 
@@ -300,18 +364,20 @@ void anlginCalibrateADC1()
     * if the calibration failed. */
    while(COCO_FLAG != SET){}
    while(CALI_FAIL_FLAG == SET){}
-
+   calibration_var = (uint16_t)(ADC1->SC1[0]);
    /* As specified in section 39.5.6 of the K66 reference manual, a 16-bit
     * variable must sum various calibration value registers and divide by two
     * to calculate plus side and minus side gain values to complete calibration */
-   calibration_var = (uint16_t)((ADC1->CLP0) + (ADC1->CLP1) + (ADC1->CLP2)+
+   calibration_var = (uint16_t)((ADC1->CLP0) + (ADC1->CLP1) + (ADC1->CLP2) +
                                 (ADC1->CLP3) + (ADC1->CLP4) + (ADC1->CLPS));
+
    calibration_var = calibration_var >> 1U;
    calibration_var |= (uint16_t)0x80U;
    ADC1->PG = (uint32_t)calibration_var;
 
-   calibration_var = (uint16_t)((ADC1->CLM0) + (ADC1->CLM1) + (ADC1->CLM2)+
+   calibration_var = (uint16_t)((ADC1->CLM0) + (ADC1->CLM1) + (ADC1->CLM2) +
                                 (ADC1->CLM3) + (ADC1->CLM4) + (ADC1->CLMS));
+
    calibration_var = calibration_var >> 1U;
    calibration_var |= (uint16_t)0x80U;
    ADC1->MG = (uint32_t)calibration_var;
@@ -319,4 +385,24 @@ void anlginCalibrateADC1()
    /* Hardware averaging 32 samples is disabled as it is not wanted to normal
     * operation. */
    ADC1->SC3 &= ~(ADC_SC3_AVGE_MASK | ADC_SC3_AVGS_MASK);
+}
+
+/******************************************************************************
+*   ADC1_IRQHandler() - Interrupt handler for ADC1 COCO (conversion complete)
+*   flag. Posts task notification to Analog In Sampler Task.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+void ADC1_IRQHandler()
+{
+    BaseType_t xHigherPriorityTaskWoken;
+    uint16_t calibration_var;
+    calibration_var = (uint16_t)(ADC1->SC1[0]);
+    xHigherPriorityTaskWoken = pdFALSE;
+
+    vTaskNotifyGiveFromISR(anlginSamplerTaskHandle, &xHigherPriorityTaskWoken);
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

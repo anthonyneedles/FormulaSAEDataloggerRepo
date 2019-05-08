@@ -65,13 +65,13 @@ void AnlgInInit(void);
 void AnlgInSet(AnlgInMsg_t);
 
 /******************************************************************************
-*   anlginCalibrateADC1() - Private function that calibrates ADC1 after reset
-*   and before any conversion are initiated.
+*   ADC1_IRQHandler() - Interrupt handler for ADC1 COCO (conversion complete)
+*   flag. Posts task notification to Analog In Sampler Task.
 *
 *   Parameters: None
 *
 *   Return: None
 ******************************************************************************/
-void PIT1_IRQHandler(void);
+void ADC1_IRQHandler(void);
 
 #endif /* ANALOGINPUT_H_ */

@@ -64,7 +64,7 @@ void main(void) {
     AnlgInInit();
 
 
-//    vTaskStartScheduler();
+    vTaskStartScheduler();
     while(1){
         test_int++;
     }

@@ -32,3 +32,9 @@ Started Analog Input module. Established initial public setting function. Have y
 
 v0.6.1
 Nearly completed writing Analog Input module, including ADC/PIT initialization. Tested power and conditioning section in hardware, as well as observing PIT1 frequency (8kHz). Need to test ADC in hardware. Updated most comments in Analog In module. 
+
+v0.6.1
+Nearly completed writing Analog Input module, including ADC/PIT initialization. Tested power and conditioning section in hardware, as well as observing PIT1 frequency (8kHz). Need to test ADC in hardware. Updated most comments in Analog In module.
+
+v0.6.2
+Analog Input module almost complete, hardware testing proves ADC1 is triggering correctly, but measured data does not change. NOTE: IRQs NEED TO MANUALLY BE GIVEN A PRIORITY <=2 SO THAT FREERTOS CAN MASK THEM IN CRITICAL SECTIONS. 
