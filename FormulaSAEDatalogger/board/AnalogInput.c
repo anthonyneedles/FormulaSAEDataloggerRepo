@@ -30,7 +30,7 @@
 ******************************************************************************/
 static void anlginCalibrateADC1(void);
 
-static void anlginSamplerTask(void *pvParameters);
+static void anlginSamplerTask(void *);
 
 /******************************************************************************
 *   Private Definitions
@@ -54,7 +54,7 @@ static void anlginSamplerTask(void *pvParameters);
 #define SINGLE_ENDED                0x00U
 
 /* Task parameters */
-#define ANLGINSAMPLERTASK_PRIORITY     5U
+#define ANLGINSAMPLERTASK_PRIORITY     4U
 #define ANLGINSAMPLERTASK_STKSIZE    256U
 
 /* Register Flags */
@@ -158,9 +158,6 @@ typedef struct AnlgInData_t
  * Secured by Mutex "anlginCurrentDataKey" */
 static AnlgInData_t anlginCurrentData;
 
-/******************************************************************************
-*   Private Handles
-******************************************************************************/
 /* Mutex key that will protect anlginCurrentData structure. Must be pended on
  * if writing/reading anlginCurrentData is desired to ensure synchronization */
 static SemaphoreHandle_t anlginCurrentDataKey;
@@ -196,6 +193,11 @@ void AnlgInInit()
     PORTC->PCR[AIN3_COND_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
     PORTC->PCR[AIN4_COND_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
 
+    PORTC->PCR[9] = PORT_PCR_MUX(0);
+    PORTC->PCR[8] = PORT_PCR_MUX(0);
+    PORTC->PCR[10] = PORT_PCR_MUX(0);
+    PORTC->PCR[11] = PORT_PCR_MUX(0);
+
     GPIOB->PDDR |= GPIO_PDDR_PDD((OUTPUT << AIN1_POWER_PIN_NUM) |
                                  (OUTPUT << AIN2_POWER_PIN_NUM) |
                                  (OUTPUT << AIN3_POWER_PIN_NUM) |
@@ -213,11 +215,11 @@ void AnlgInInit()
     anlginCurrentData.ain3_data = (uint16_t)0x0000;
     anlginCurrentData.ain4_data = (uint16_t)0x0000;
 
-    /* Create Analog In current data structure Mutex */
+    /* Create Analog In current data structure mutex */
     anlginCurrentDataKey = xSemaphoreCreateMutex();
     while(anlginCurrentDataKey == NULL){ /* Error trap */ }
 
-    /* Create Analog In sampler task Mutex */
+    /* Create Analog In sampler task */
     task_create_return = xTaskCreate(anlginSamplerTask,
                                      "Analog In Sampler Task",
                                      ANLGINSAMPLERTASK_STKSIZE,
@@ -256,7 +258,8 @@ void AnlgInInit()
     ADC1->SC1[0] = ADC_SC1_AIEN(ENABLE) | ADC_SC1_DIFF(SINGLE_ENDED) |
                    ADC_SC1_ADCH(AIN1_SIG_CHNL);
 
-    /* Enable ADC1 interrupts (for COCO ISR) */
+    /* Enable ADC1 interrupts (for COCO ISR), with priority change for use
+     * with FreeRTOS */
     NVIC_SetPriority(ADC1_IRQn, 2U);
     NVIC_ClearPendingIRQ(ADC1_IRQn);
     NVIC_EnableIRQ(ADC1_IRQn);
@@ -284,7 +287,7 @@ static void anlginSamplerTask(void *pvParameters)
 
         take_return = xSemaphoreTake(anlginCurrentDataKey, portMAX_DELAY);
 
-        while(take_return == pdFAIL){ /*Error trap, Mutex key never available */ }
+        while(take_return == pdFAIL){ /* Error trap, Mutex key never available */ }
 
         anlginCurrentData.ain1_data = ((uint16_t)(ADC1->R[0]));
 
@@ -364,7 +367,7 @@ static void anlginCalibrateADC1()
     * if the calibration failed. */
    while(COCO_FLAG != SET){}
    while(CALI_FAIL_FLAG == SET){}
-   calibration_var = (uint16_t)(ADC1->SC1[0]);
+
    /* As specified in section 39.5.6 of the K66 reference manual, a 16-bit
     * variable must sum various calibration value registers and divide by two
     * to calculate plus side and minus side gain values to complete calibration */
@@ -398,8 +401,8 @@ static void anlginCalibrateADC1()
 void ADC1_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken;
-    uint16_t calibration_var;
-    calibration_var = (uint16_t)(ADC1->SC1[0]);
+//    uint16_t calibration_var;
+//    calibration_var = (uint16_t)(ADC1->SC1[0]);
     xHigherPriorityTaskWoken = pdFALSE;
 
     vTaskNotifyGiveFromISR(anlginSamplerTaskHandle, &xHigherPriorityTaskWoken);

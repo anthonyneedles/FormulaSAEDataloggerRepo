@@ -61,10 +61,10 @@ void main(void) {
     ClkCfgRun();
 
 
-    AnlgInInit();
+//    AnlgInInit();
 
 
-    vTaskStartScheduler();
+//    vTaskStartScheduler();
     while(1){
         test_int++;
     }

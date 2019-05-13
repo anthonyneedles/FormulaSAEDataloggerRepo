@@ -251,9 +251,7 @@
 							<tool id="com.crt.advproject.tool.debug.debug.528813907" name="MCU Debugger">
 								<option id="com.crt.advproject.linkserver.debug.prevent.debug.1454226336" superClass="com.crt.advproject.linkserver.debug.prevent.debug"/>
 							</tool>
-							<tool id="com.crt.advproject.tool.debug.debug.1269463885" name="MCU Debugger"/>
-							<tool id="com.crt.advproject.tool.debug.debug.1953251983" name="MCU Debugger"/>
-							<tool id="com.crt.advproject.tool.debug.debug.1023231899" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.debug"/>
+							<tool id="com.crt.advproject.tool.debug.debug.1269463885" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.debug"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -517,9 +515,7 @@
 							<tool id="com.crt.advproject.tool.debug.release.793426135" name="MCU Debugger">
 								<option id="com.crt.advproject.linkserver.debug.prevent.release.552821211" superClass="com.crt.advproject.linkserver.debug.prevent.release"/>
 							</tool>
-							<tool id="com.crt.advproject.tool.debug.release.1165749937" name="MCU Debugger"/>
-							<tool id="com.crt.advproject.tool.debug.release.615887617" name="MCU Debugger"/>
-							<tool id="com.crt.advproject.tool.debug.release.1350507246" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.release"/>
+							<tool id="com.crt.advproject.tool.debug.release.1165749937" name="MCU Debugger" superClass="com.crt.advproject.tool.debug.release"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
