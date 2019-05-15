@@ -1,5 +1,5 @@
 /******************************************************************************
-*   AnalogInput.c
+*   AnalogInput.h
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/04/2019
+*   Comments up to date as of: 05/15/2019
 *
 *   Created on: 04/29/2019
 *   Author: Anthony Needles

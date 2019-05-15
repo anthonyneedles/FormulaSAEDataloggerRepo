@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/04/2019
+*   Comments up to date as of: 05/15/2019
 *
 *   Created on: 04/29/2019
 *   Author: Anthony Needles
@@ -95,6 +95,30 @@ static void anlginSamplerTask(void *);
 #define AIN3_SIG_CHNL                  7U
 #define AIN4_SIG_CHNL                  6U
 
+/* Sets AIN power pin, providing 12V power to AIN sensor */
+#define A1_PWR_12V (GPIOB->PDOR |= ((1U) << AIN1_POWER_PIN_NUM))
+#define A2_PWR_12V (GPIOB->PDOR |= ((1U) << AIN2_POWER_PIN_NUM))
+#define A3_PWR_12V (GPIOB->PDOR |= ((1U) << AIN3_POWER_PIN_NUM))
+#define A4_PWR_12V (GPIOB->PDOR |= ((1U) << AIN4_POWER_PIN_NUM))
+
+/* Clears AIN power pin, providing 5V power to AIN sensor */
+#define A1_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN1_POWER_PIN_NUM))
+#define A2_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN2_POWER_PIN_NUM))
+#define A3_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN3_POWER_PIN_NUM))
+#define A4_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN4_POWER_PIN_NUM))
+
+/* Sets AIN conditioning pin, providing 5V conditioning to AIN sensor signal */
+#define A1_COND_5V (GPIOC->PDOR |= ((1U) << AIN1_COND_PIN_NUM))
+#define A2_COND_5V (GPIOC->PDOR |= ((1U) << AIN2_COND_PIN_NUM))
+#define A3_COND_5V (GPIOC->PDOR |= ((1U) << AIN3_COND_PIN_NUM))
+#define A4_COND_5V (GPIOC->PDOR |= ((1U) << AIN4_COND_PIN_NUM))
+
+/* Clears AIN conditioning pin, providing 12V conditioning to AIN sensor signal*/
+#define A1_COND_12V (GPIOC->PDOR &= ~((1U) << AIN1_COND_PIN_NUM))
+#define A2_COND_12V (GPIOC->PDOR &= ~((1U) << AIN2_COND_PIN_NUM))
+#define A3_COND_12V (GPIOC->PDOR &= ~((1U) << AIN3_COND_PIN_NUM))
+#define A4_COND_12V (GPIOC->PDOR &= ~((1U) << AIN4_COND_PIN_NUM))
+
 /* Structure definition for Analog Input data and configurations */
 typedef struct AnlgInData_t
 {
@@ -112,20 +136,6 @@ typedef struct AnlgInData_t
 /******************************************************************************
 *   Private Macros
 ******************************************************************************/
-/* Macros accepting FIVE_VOLTS/TWELVE_VOLTS (0/1) to either set or clear AIN
- * power pin */
-#define AIN1_POWER_SET(x) (GPIOB->PDOR |= ((x) << AIN1_POWER_PIN_NUM))
-#define AIN2_POWER_SET(x) (GPIOB->PDOR |= ((x) << AIN2_POWER_PIN_NUM))
-#define AIN3_POWER_SET(x) (GPIOB->PDOR |= ((x) << AIN3_POWER_PIN_NUM))
-#define AIN4_POWER_SET(x) (GPIOB->PDOR |= ((x) << AIN4_POWER_PIN_NUM))
-
-/* Macros accepting TWELVE_VOLTS/FIVE_VOLTS (0/1) to either set or clear AIN
- * conditioning pin. */
-#define AIN1_COND_SET(x) (GPIOC->PDOR |= ((x) << AIN1_COND_PIN_NUM))
-#define AIN2_COND_SET(x) (GPIOC->PDOR |= ((x) << AIN2_COND_PIN_NUM))
-#define AIN3_COND_SET(x) (GPIOC->PDOR |= ((x) << AIN3_COND_PIN_NUM))
-#define AIN4_COND_SET(x) (GPIOC->PDOR |= ((x) << AIN4_COND_PIN_NUM))
-
 /* Macros accepting 8 bit field to find and isolate AIN's power bit and
  * shift over to bit 0 position for relevant SET function */
 #define AIN1_POWER_BIT(x) (((x) >> AIN1_POWER_BIT_NUM) & BIT_0_MASK)
@@ -135,14 +145,14 @@ typedef struct AnlgInData_t
 
 /* Macros accepting 8 bit field to find and isolate AIN's conditioning bit and
  * shift over to bit 0 position for relevant SET function.
+ *
  * NOTE: Power and conditioning set macros use the same bit for each AIN, but
- * since a '0' corresponds to a FIVE_VOLTS power SET but a '0' corresponds to a
- * TWELVE_VOLTS conditioning set, the conditioning SET macro must receive the
- * inverse of this bit so both SET macros are FIVE_VOLTS or TWELVE_VOLTS */
-#define AIN1_COND_BIT(x) (AIN1_POWER_BIT(~x))
-#define AIN2_COND_BIT(x) (AIN2_POWER_BIT(~x))
-#define AIN3_COND_BIT(x) (AIN3_POWER_BIT(~x))
-#define AIN4_COND_BIT(x) (AIN4_POWER_BIT(~x))
+ * a '0' corresponds to a FIVE_VOLTS power set but a '0' corresponds to a
+ * TWELVE_VOLTS conditioning set. */
+#define AIN1_COND_BIT(x) (AIN1_POWER_BIT(x))
+#define AIN2_COND_BIT(x) (AIN2_POWER_BIT(x))
+#define AIN3_COND_BIT(x) (AIN3_POWER_BIT(x))
+#define AIN4_COND_BIT(x) (AIN4_POWER_BIT(x))
 
 /* Macros accepting 32 bit field to find and isolate AIN's sampling rate byte
  * and shift over to bits [0:7], then casting to individual 8-bit value */
@@ -321,17 +331,28 @@ static void anlginSamplerTask(void *pvParameters)
 void AnlgInSet(AnlgInMsg_t msg)
 {
     BaseType_t take_return;
-    /* Convert state/power message to individual conditioning/power/state bits
-     * for each AIN */
-    AIN1_POWER_SET(AIN1_POWER_BIT(msg.power_state_field));
-    AIN2_POWER_SET(AIN2_POWER_BIT(msg.power_state_field));
-    AIN3_POWER_SET(AIN3_POWER_BIT(msg.power_state_field));
-    AIN4_POWER_SET(AIN4_POWER_BIT(msg.power_state_field));
 
-    AIN1_COND_SET(AIN1_COND_BIT(msg.power_state_field));
-    AIN2_COND_SET(AIN2_COND_BIT(msg.power_state_field));
-    AIN3_COND_SET(AIN3_COND_BIT(msg.power_state_field));
-    AIN4_COND_SET(AIN4_COND_BIT(msg.power_state_field));
+    /* Convert power/conditioning message to individual bits for each AIN and
+     * changes power output and input conditioning accordingly */
+    (AIN1_POWER_BIT(msg.power_state_field) == 1U) ? A1_PWR_12V : A1_PWR_5V;
+    (AIN2_POWER_BIT(msg.power_state_field) == 1U) ? A2_PWR_12V : A2_PWR_5V;
+    (AIN3_POWER_BIT(msg.power_state_field) == 1U) ? A3_PWR_12V : A3_PWR_5V;
+    (AIN4_POWER_BIT(msg.power_state_field) == 1U) ? A4_PWR_12V : A4_PWR_5V;
+
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
+
+//    AIN1_POWER_SET(AIN1_POWER_BIT(msg.power_state_field));
+//    AIN2_POWER_SET(AIN2_POWER_BIT(msg.power_state_field));
+//    AIN3_POWER_SET(AIN3_POWER_BIT(msg.power_state_field));
+//    AIN4_POWER_SET(AIN4_POWER_BIT(msg.power_state_field));
+//
+//    AIN1_COND_SET(AIN1_COND_BIT(msg.power_state_field));
+//    AIN2_COND_SET(AIN2_COND_BIT(msg.power_state_field));
+//    AIN3_COND_SET(AIN3_COND_BIT(msg.power_state_field));
+//    AIN4_COND_SET(AIN4_COND_BIT(msg.power_state_field));
 
     /* Pend on Mutex to update data structure */
     take_return = xSemaphoreTake(anlginCurrentDataKey, portMAX_DELAY);

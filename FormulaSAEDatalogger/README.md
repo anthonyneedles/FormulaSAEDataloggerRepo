@@ -41,3 +41,6 @@ Analog Input module almost complete, hardware testing proves ADC1 is triggering 
 
 v0.7.0
 Need to test ADC in hardware. Created GPS module to receive time and date data from GPS NMEA 1Hz stream on UART4. Need to test in hardware.
+
+v0.7.1
+Need to test ADC in hardware. Need to test GPS UART in hardware. Completed initialization and basic use of fsl FreeRTOS I2C driver. Need to test in hardware. Updated Analog Input and Digital Output modules to change how setting/clearing was handled for power/state/conditioning pin selects.

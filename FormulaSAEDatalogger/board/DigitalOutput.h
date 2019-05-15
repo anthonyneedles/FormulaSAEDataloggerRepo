@@ -1,5 +1,5 @@
 /******************************************************************************
-*   DigitalOutput.c
+*   DigitalOutput.h
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -18,7 +18,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 04/29/2019
+*   Comments up to date as of: 05/14/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles

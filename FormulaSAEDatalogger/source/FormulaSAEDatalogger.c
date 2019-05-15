@@ -37,14 +37,18 @@
 
 void main(void) {
     volatile uint32_t test_int = 0;
-//    DigOutMsg_t test_msg_dout = {0xAA, 0xAA};
+    DigOutMsg_t test_msg_dout;
+    test_msg_dout.power_field = 0xFFU;
+    test_msg_dout.state_field = 0xFFU;
 //    AnlgInMsg_t test_msg_ain = {0x5B, 0x55AA55AA};
 
-//    DigOutInit();
-//    DigOutSet(test_msg_dout);
+    ClkCfgRun();
+
+    DigOutInit();
+    DigOutSet(test_msg_dout);
 //    test_msg_dout.power_field = 0x55;
-//    test_msg_dout.state_field = 0x55;
-//    DigOutSet(test_msg_dout);
+    test_msg_dout.state_field = 0x00U;
+    DigOutSet(test_msg_dout);
 
 //    AnlgInSet(test_msg_ain);
 //    test_msg_ain.power_state_field = 0x55;
@@ -58,7 +62,7 @@ void main(void) {
 //                1,
 //                NULL);
 
-    ClkCfgRun();
+
 
 
 //    AnlgInInit();

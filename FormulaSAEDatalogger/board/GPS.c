@@ -147,7 +147,7 @@ void GPSUART4Init()
 *   desired NMEA sentence is RMC (position, velocity, and time), which is the
 *   first section of the 6-sentence-wide frame that the GPS transmits at 1Hz.
 *   Polling is used to detect when a byte is received, thus blocking the
-*   program.
+*   program (this is only ran during initialization, so this is okay).
 *
 *   FIND_PREAMBLE - Reads UART Rx to find a '$', the preamble character in the
 *   RMC NMEA message. Most of the time, this UART line will be idling in between
