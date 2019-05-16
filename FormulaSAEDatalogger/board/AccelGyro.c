@@ -25,41 +25,48 @@
 #include "semphr.h"
 #include "task.h"
 #include "fsl_i2c.h"
-#include "fsl_i2c_freertos.h"
 
-#define ENABLE                      0x01U
+#define ENABLE                          0x01U
+#define ALT_1_GPIO                      0x01U
+#define ALT_2_I2C                       0x02U
 
 /* Task parameters */
-#define ACCELGYROSAMPLERTASK_PRIORITY     3U
-#define ACCELGYROSAMPLERTASK_STKSIZE    256U
+#define ACCELGYROSAMPLERTASK_PRIORITY      3U
+#define ACCELGYROSAMPLERTASK_STKSIZE     256U
 
-#define I2C3_SDA_PIN_NUM              10U
-#define I2C3_SCL_PIN_NUM              11U
-#define ALT_2_I2C                   0x02U
-#define I2C3_SRC_CLK_HZ         60000000U
-#define ACCELGYRO_I2C_ADDR          0x6BU
-#define I2C_DATA_LENGTH                8U
+/* Input pins for accel/gyro's interrupt outputs, all PORTE. */
+#define INT1_PIN_NUM                       9U
+#define INT2_PIN_NUM                      12U
+
+#define I2C3_SDA_PIN_NUM                  10U
+#define I2C3_SCL_PIN_NUM                  11U
+#define I2C3_SRC_CLK_HZ             60000000U
+#define ACCELGYRO_I2C_ADDR              0x6BU
+#define I2C_DATA_LENGTH                    1U
 
 #define I2C3_BASE_PTR ((I2C_Type *)I2C3_BASE)
 
-static void accelgyroSamplerTask(void *);
+//static void accelgyroSamplerTask(void *);
 
-uint8_t accelgyroBuffer[I2C_DATA_LENGTH] = { 0x01U, 0x02U, 0x03U, 0x04U,
-                                             0x05U, 0x06U, 0x07U, 0x08U };
+//uint8_t accelgyroBuffer[I2C_DATA_LENGTH] = {0x01, 0x02};
 
 
-static i2c_master_handle_t *accelgyroMasterHandle;
-static i2c_rtos_handle_t accelgyroRTOSHandle;
-static i2c_master_transfer_t accelgyroMasterTransfer;
 
 void AccelGyroInit()
 {
-    BaseType_t task_create_return;
-    i2c_master_config_t master_config;
+    i2c_direction_t dir = kI2C_Read;
     status_t status;
-
-    SIM->SCGC5 |= SIM_SCGC5_PORTE(ENABLE);
-    SIM->SCGC1 |= SIM_SCGC1_I2C3(ENABLE);
+    uint8_t buf[I2C_DATA_LENGTH] = {0x0FU};
+    i2c_master_transfer_t handle = {kI2C_TransferDefaultFlag,
+                                    ACCELGYRO_I2C_ADDR,
+                                    dir,
+                                    0,
+                                    0,
+                                    buf,
+                                    1U};
+    i2c_master_config_t config;
+    I2C_MasterGetDefaultConfig(&config);
+    I2C_MasterInit(I2C3_BASE_PTR, &config, I2C3_SRC_CLK_HZ);
 
     PORTE->PCR[I2C3_SDA_PIN_NUM] = (PORT_PCR_MUX(ALT_2_I2C) |
                                     PORT_PCR_ODE(ENABLE));
@@ -67,49 +74,25 @@ void AccelGyroInit()
     PORTE->PCR[I2C3_SCL_PIN_NUM] = (PORT_PCR_MUX(ALT_2_I2C) |
                                     PORT_PCR_ODE(ENABLE));
 
-    task_create_return = xTaskCreate(accelgyroSamplerTask,
-                                     "Accel/Gyro Sampler Task",
-                                     ACCELGYROSAMPLERTASK_PRIORITY,
-                                     NULL,
-                                     ACCELGYROSAMPLERTASK_STKSIZE,
-                                     NULL);
+    I2C_Enable(I2C3_BASE_PTR, true);
 
-    while(task_create_return == pdFAIL){ /* Error trap */ }
+    status = I2C_MasterTransferBlocking(I2C3_BASE_PTR, &handle);
+    while(status != kStatus_Success){}
 
-    /* masterConfig.baudRate_Bps = 100000U;
-     * masterConfig.enableStopHold = false;
-     * masterConfig.glitchFilterWidth = 0U;
-     * masterConfig.enableMaster = true; */
-    I2C_MasterGetDefaultConfig(&master_config);
 
-    status = I2C_RTOS_Init(&accelgyroRTOSHandle,
-                           I2C3_BASE_PTR,
-                           &master_config,
-                           I2C3_SRC_CLK_HZ);
-
-    while (status != kStatus_Success){ /* Error trap */ }
-
-    accelgyroMasterHandle = &accelgyroRTOSHandle.drv_handle;
-    memset(&accelgyroMasterTransfer, 0, sizeof(accelgyroMasterTransfer));
 }
 
-void accelgyroSamplerTask(void *pvParameters)
-{
-    status_t status;
-
-    accelgyroMasterTransfer.slaveAddress = ACCELGYRO_I2C_ADDR;
-    accelgyroMasterTransfer.direction = kI2C_Write;
-    accelgyroMasterTransfer.subaddress = 0;
-    accelgyroMasterTransfer.subaddressSize = 0;
-    accelgyroMasterTransfer.data = accelgyroBuffer;
-    accelgyroMasterTransfer.dataSize = I2C_DATA_LENGTH;
-    accelgyroMasterTransfer.flags = kI2C_TransferDefaultFlag;
-
-    status = I2C_RTOS_Transfer(&accelgyroRTOSHandle, &accelgyroMasterTransfer);
-    while (status != kStatus_Success){ /* Error trap */ }
-
-    while(1)
-    {
-
-    }
-}
+//void accelgyroSamplerTask(void *pvParameters)
+//{
+//
+//
+//    while(1)
+//    {
+//
+//    }
+//}
+//
+//void I2C3_IRQn()
+//{
+//
+//}

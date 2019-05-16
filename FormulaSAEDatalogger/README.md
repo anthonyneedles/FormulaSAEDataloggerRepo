@@ -44,3 +44,6 @@ Need to test ADC in hardware. Created GPS module to receive time and date data f
 
 v0.7.1
 Need to test ADC in hardware. Need to test GPS UART in hardware. Completed initialization and basic use of fsl FreeRTOS I2C driver. Need to test in hardware. Updated Analog Input and Digital Output modules to change how setting/clearing was handled for power/state/conditioning pin selects.
+
+v0.7.2
+Analog Input testing provided fault with 12V conditioning, most likely a hardware issue. ADC has not been hardware tested. GPS NMEA UART data successfully parsed, except GPS can not fix inside of the lab, so I will need to test it outside. Successfully communicated with Accel/Gyro via I2C, need to integrate with FreeRTOS task.

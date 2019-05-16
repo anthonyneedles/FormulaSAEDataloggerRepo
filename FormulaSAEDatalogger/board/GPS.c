@@ -35,7 +35,7 @@ void gpsGetTimeDateBlocking(void);
 ******************************************************************************/
 #define ENABLE                      1U
 #define SET                         1U
-#define DISABLED                 0x01U
+#define DISABLED                 0x00U
 #define ENABLED                  0x01U
 #define BAUD_RATE_DIV           0x186U
 #define BAUD_RATE_FA             0x18U
@@ -50,7 +50,7 @@ void gpsGetTimeDateBlocking(void);
 #define UART4_RX_PIN_NUM           25U
 #define UART4_TX_PIN_NUM           24U
 #define ALT_3_UART               0x03U
-#define RX_BYTES                   17U
+#define RX_BYTES                   57U
 
 #define RX_DATA_FLAG (((UART4->S1) & UART_S1_RDRF_MASK) >> UART_S1_RDRF_SHIFT)
 
@@ -103,8 +103,8 @@ void GPSUART4Init()
     SIM->SCGC1 |= SIM_SCGC1_UART4(ENABLE);
     SIM->SCGC5 |= SIM_SCGC5_PORTE(ENABLE);
 
-    PORTB->PCR[UART4_RX_PIN_NUM] = PORT_PCR_MUX(ALT_3_UART);
-    PORTB->PCR[UART4_TX_PIN_NUM] = PORT_PCR_MUX(ALT_3_UART);
+    PORTE->PCR[UART4_RX_PIN_NUM] = PORT_PCR_MUX(ALT_3_UART);
+    PORTE->PCR[UART4_TX_PIN_NUM] = PORT_PCR_MUX(ALT_3_UART);
 
     /* Baud rate = Module clock / (16 × (BAUD_RATE_DIV + BAUD_RATE_FA))
      * Module clock = 60MHz, BRD = 390, BRFA = 0.375
@@ -157,13 +157,6 @@ void GPSUART4Init()
 *   case the opportunity to receive the first sentence is lost until the next
 *   frame.
 *
-*   FRAME_DELAY - Delays the state machine by ~500ms, which is guaranteed to
-*   skip the entire current frame and place the next Rx read at the beginning of
-*   the next frame. This guarantees that the next read character will be the RMC
-*   preamble. Transitions to this state occur whenever the current Rx data is
-*   invalid (time is invalid, wrong section, no preamble found, unexpected
-*   character, etc.).
-*
 *   FIND_MSG_ID - After finding the section preamble, this state will verify
 *   that the current section is the RMC sentence, rather than any of the other
 *   five that comprise the whole NMEA frame. The talker and message ID for the
@@ -174,7 +167,8 @@ void GPSUART4Init()
 *   comprise time data in hhmmss format, followed by 5 unnecessary characters,
 *   followed by the time valid character ('A' = valid, 'V' = invalid), followed
 *   by 37 unnecessary characters, followed by a ',', and finally 6 Rx characters
-*   that comprise date data in DDMMYY.
+*   that comprise date data in DDMMYY. If an unexpected character is found, or
+*   a 'V' (invalid) time is detected, the state machine starts over.
 *
 *   TIME_SET - Converts received ASCII characters to a decimal value, and saves
 *   them in a structure.
@@ -189,42 +183,43 @@ void gpsGetTimeDateBlocking()
     TimeCompState_t state = FIND_PREAMBLE;
     uint8_t temp_read;
     uint8_t gpsMessage[RX_BYTES];
+    uint8_t invalid_flag;
 
     while(rx_status == ENABLED)
     {
         switch(state)
         {
             case FIND_PREAMBLE:
+                invalid_flag = 0;
                 UART4->C2 |= UART_C2_RE(ENABLE);
                 while(RX_DATA_FLAG != SET){}
-                state = ((UART4->D == '$') ? FIND_MSG_ID : FRAME_DELAY);
+                state = ((UART4->D == '$') ? FIND_MSG_ID : FIND_PREAMBLE);
                 break;
 
-            case FRAME_DELAY:
-                UART4->C2 &= ~UART_C2_RE(ENABLE);
-                for(int i = 0; i < 90000000; i++ ){}
-                UART4->C2 |= UART_C2_RE(ENABLE);
-                state = FIND_PREAMBLE;
-                break;
 
             case FIND_MSG_ID:
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'G'){ state = FRAME_DELAY; }
+                if(UART4->D != 'G'){ state = FIND_PREAMBLE; }
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'P'){ state = FRAME_DELAY; }
+                if(UART4->D != 'P'){ state = FIND_PREAMBLE; }
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'R'){ state = FRAME_DELAY; }
+                if(UART4->D != 'R'){ state = FIND_PREAMBLE; }
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'M'){ state = FRAME_DELAY; }
+                if(UART4->D != 'M'){ state = FIND_PREAMBLE; }
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'C'){ state = FRAME_DELAY; }
+                if(UART4->D != 'C'){ state = FIND_PREAMBLE; }
 
                 state = SAVE_TIME;
                 break;
 
             case SAVE_TIME:
+//                for(int i = 0; i < RX_BYTES; i++)
+//                {
+//                    while(RX_DATA_FLAG != SET){}
+//                    gpsMessage[i] = UART4->D;
+//                }
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != ','){ state = FRAME_DELAY; }
+                if(UART4->D != ','){ invalid_flag = 1U; }
 
                 for(int i = 0; i < 6; i++)
                 {
@@ -239,7 +234,7 @@ void gpsGetTimeDateBlocking()
                 }
 
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'A'){ state = FRAME_DELAY; }
+                if(UART4->D != 'A'){ invalid_flag = 1U; }
 
                 for(int i = 0; i < 37; i++)
                 {
@@ -248,7 +243,7 @@ void gpsGetTimeDateBlocking()
                 }
 
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != ','){ state = FRAME_DELAY; }
+                if(UART4->D != ','){ invalid_flag = 1U; }
 
                 for(int i = 6; i < 12; i++)
                 {
@@ -256,11 +251,11 @@ void gpsGetTimeDateBlocking()
                     gpsMessage[i] = UART4->D;
                 }
 
-                state = TIME_SET;
+                (invalid_flag == SET) ? state = FIND_PREAMBLE : TIME_SET;
                 break;
 
             case TIME_SET:
-                UART4->C2 &= ~(UART_C2_RE(ENABLE) | UART_C2_RIE(ENABLE));
+                UART4->C2 &= ~UART_C2_RE(ENABLE);
 
                 gpsTimeDateData.year  = (gpsMessage[10] - '0')*10U +
                                         (gpsMessage[11] - '0');

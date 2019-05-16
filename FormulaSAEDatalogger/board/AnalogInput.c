@@ -339,10 +339,10 @@ void AnlgInSet(AnlgInMsg_t msg)
     (AIN3_POWER_BIT(msg.power_state_field) == 1U) ? A3_PWR_12V : A3_PWR_5V;
     (AIN4_POWER_BIT(msg.power_state_field) == 1U) ? A4_PWR_12V : A4_PWR_5V;
 
-    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
-    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
-    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
-    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_5V : A1_COND_12V;
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_12V : A1_COND_5V;
+    (AIN2_COND_BIT(msg.power_state_field) == 1U) ? A2_COND_12V : A2_COND_5V;
+    (AIN3_COND_BIT(msg.power_state_field) == 1U) ? A3_COND_12V : A3_COND_5V;
+    (AIN4_COND_BIT(msg.power_state_field) == 1U) ? A4_COND_12V : A4_COND_5V;
 
 //    AIN1_POWER_SET(AIN1_POWER_BIT(msg.power_state_field));
 //    AIN2_POWER_SET(AIN2_POWER_BIT(msg.power_state_field));

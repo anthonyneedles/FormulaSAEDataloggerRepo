@@ -32,56 +32,40 @@
 #include "ClockConfig.h"
 #include "DigitalOutput.h"
 #include "AnalogInput.h"
-
-//void ClockInitTask(void *pvParameters);
+#include "GPS.h"
+#include "AccelGyro.h"
 
 void main(void) {
     volatile uint32_t test_int = 0;
-    DigOutMsg_t test_msg_dout;
-    test_msg_dout.power_field = 0xFFU;
-    test_msg_dout.state_field = 0xFFU;
-//    AnlgInMsg_t test_msg_ain = {0x5B, 0x55AA55AA};
+
+//    DigOutMsg_t test_msg_dout;
+//    AnlgInMsg_t test_msg_ain;
 
     ClkCfgRun();
 
-    DigOutInit();
-    DigOutSet(test_msg_dout);
-//    test_msg_dout.power_field = 0x55;
-    test_msg_dout.state_field = 0x00U;
-    DigOutSet(test_msg_dout);
+//    DigOutInit();
+//    test_msg_dout.power_field = 0xFFU;
+//    test_msg_dout.state_field = 0xFFU;
+//    DigOutSet(test_msg_dout);
+//    test_msg_dout.power_field = 0x00U;
+//    test_msg_dout.state_field = 0x00U;
+//    DigOutSet(test_msg_dout);
 
-//    AnlgInSet(test_msg_ain);
-//    test_msg_ain.power_state_field = 0x55;
-//    test_msg_ain.sampling_rate_field = 0xAA55AA55;
-//    AnlgInSet(test_msg_ain);
-
-//    xTaskCreate(ClockInitTask,
-//                "Clock Init Task",
-//                256,
-//                NULL,
-//                1,
-//                NULL);
-
-
-
+//    GPSUART4Init();
 
 //    AnlgInInit();
+//    test_msg_ain.power_state_field = 0xFF;
+//    test_msg_ain.sampling_rate_field = 0x55AA55AA;
+//    AnlgInSet(test_msg_ain);
+//    test_msg_ain.power_state_field = 0x00;
+//    test_msg_ain.sampling_rate_field = 0x55AA55AA;
+//    AnlgInSet(test_msg_ain);
 
+    AccelGyroInit();
 
 //    vTaskStartScheduler();
+
     while(1){
         test_int++;
     }
 }
-
-//void ClockInitTask(void *pvParameters)
-//{
-//    volatile uint32_t test_int = 0;
-//    while(1)
-//    {
-//        while(1){
-//            test_int++;
-//        }
-//    }
-//    vTaskDelete(NULL);
-//}

@@ -8,6 +8,6 @@
 #ifndef ACCELGYRO_H_
 #define ACCELGYRO_H_
 
-
+void AccelGyroInit(void);
 
 #endif /* ACCELGYRO_H_ */
