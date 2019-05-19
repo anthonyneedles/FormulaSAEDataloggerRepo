@@ -10,4 +10,6 @@
 
 void AccelGyroInit(void);
 
+void I2C3_IRQHandler(void);
+
 #endif /* ACCELGYRO_H_ */

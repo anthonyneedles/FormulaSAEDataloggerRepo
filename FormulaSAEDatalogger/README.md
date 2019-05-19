@@ -47,3 +47,6 @@ Need to test ADC in hardware. Need to test GPS UART in hardware. Completed initi
 
 v0.7.2
 Analog Input testing provided fault with 12V conditioning, most likely a hardware issue. ADC has not been hardware tested. GPS NMEA UART data successfully parsed, except GPS can not fix inside of the lab, so I will need to test it outside. Successfully communicated with Accel/Gyro via I2C, need to integrate with FreeRTOS task.
+
+v0.8.0
+After many attempts, I have successfully completed an non-blocking, FreeRTOS friendly I2C driver that has been tested to read configure the accelerometer and gyroscope, as well as read and save all sensor data. Comments for the Accel/Gyro module are not yet completely updated. 

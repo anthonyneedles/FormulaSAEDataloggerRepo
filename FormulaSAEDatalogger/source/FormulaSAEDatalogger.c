@@ -44,7 +44,6 @@ void main(void) {
     ClkCfgRun();
 
 //    DigOutInit();
-//    test_msg_dout.power_field = 0xFFU;
 //    test_msg_dout.state_field = 0xFFU;
 //    DigOutSet(test_msg_dout);
 //    test_msg_dout.power_field = 0x00U;
@@ -63,7 +62,7 @@ void main(void) {
 
     AccelGyroInit();
 
-//    vTaskStartScheduler();
+    vTaskStartScheduler();
 
     while(1){
         test_int++;
