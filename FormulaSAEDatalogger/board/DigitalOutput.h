@@ -18,7 +18,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/14/2019
+*   Comments up to date as of: 05/22/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
@@ -29,17 +29,17 @@
 /******************************************************************************
 *   Public Definitions
 ******************************************************************************/
-typedef struct DigOutMsg_t
+typedef struct dout_msg_t
 {
     uint8_t state_field;
     uint8_t power_field;
-} DigOutMsg_t;
+} dout_msg_t;
 
 /******************************************************************************
 *   Public Function Prototypes
 ******************************************************************************/
 /******************************************************************************
-*   DigOutInit() - Public function to initialize all digital outputs in OFF
+*   DOutInit() - Public function to initialize all digital outputs in OFF
 *   state and supplying 5V. All configuration settings are stored in
 *   doutConfigs structure.
 *
@@ -47,20 +47,21 @@ typedef struct DigOutMsg_t
 *
 *   Return: None
 ******************************************************************************/
-void DigOutInit(void);
+void DOutInit(void);
 
 /******************************************************************************
-*   DigOutSet() - Public function to set digital output states and powers via
+*   DOutSet() - Public function to set digital output states and powers via
 *   requested message structure.
 *
 *   Parameters:
 *
-*       DigOutMsg_t msg - Message structure received from telemetry unit with
+*       dout_msg_t msg - Message structure received from telemetry unit with
 *       8 bit state field (msg.state_field) and 8 bit power field
-*       (msg.power_field).
+*       (msg.power_field). msg.state_field bit 0 corresponds to DOUT1's desired
+*       state, msg.state_field bit 1 corresponds to DOUT2's state, etc.
 *
 *   Return: None
 ******************************************************************************/
-void DigOutSet(DigOutMsg_t);
+void DOutSet(dout_msg_t);
 
 #endif /* DIGITALOUTPUT_H_ */

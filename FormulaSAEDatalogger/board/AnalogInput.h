@@ -14,22 +14,43 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/15/2019
+*   Comments up to date as of: 05/22/2019
 *
-*   Created on: 04/29/2019
+*   Created on: 05/10/2019
 *   Author: Anthony Needles
 ******************************************************************************/
 #ifndef ANALOGINPUT_H_
 #define ANALOGINPUT_H_
 
-typedef struct AnlgInMsg_t
+/******************************************************************************
+*   Private Definitions
+******************************************************************************/
+/* Public message structure to set Analog In sampling configurations. */
+typedef struct ain_msg_t
 {
     uint8_t power_state_field;
     uint32_t sampling_rate_field;
-} AnlgInMsg_t;
+} ain_msg_t;
+
+/* Structure definition for Analog Input data and configurations */
+typedef struct ain_data_t
+{
+    uint8_t power_state_field;
+    uint8_t ain1_samp_rate;
+    uint8_t ain2_samp_rate;
+    uint8_t ain3_samp_rate;
+    uint8_t ain4_samp_rate;
+    uint16_t ain1_data;
+    uint16_t ain2_data;
+    uint16_t ain3_data;
+    uint16_t ain4_data;
+} ain_data_t;
 
 /******************************************************************************
-*   AnlgInInit() - Public function to configure all GPIO used as power and
+*   Public Function Prototypes
+******************************************************************************/
+/******************************************************************************
+*   AInInit() - Public function to configure all GPIO used as power and
 *   conditioning selects as outputs. Initializes Analog In data structure and
 *   creates Mutex to protect data structure. Also initializes PIT1 to trigger
 *   ADC1 at 8kHz. Configures and calibrates ADC1.
@@ -38,16 +59,26 @@ typedef struct AnlgInMsg_t
 *
 *   Return: None
 ******************************************************************************/
-void AnlgInInit(void);
+void AInInit(void);
 
 /******************************************************************************
-*   AnlgInSet() - Public function to set power and conditioning pins to achieve
+*   ADC1_IRQHandler() - Interrupt handler for ADC1 COCO (conversion complete)
+*   flag. Posts task notification to Analog In Sampler Task.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+void ADC1_IRQHandler(void);
+
+/******************************************************************************
+*   AInSet() - Public function to set power and conditioning pins to achieve
 *   requested results from received user message. Saves the new Analog In data
 *   from message in Mutex protected private data structure.
 *
 *   Parameters:
 *
-*       AnlgInMsg_t msg - Message structure received from telemetry unit
+*       ain_msg_t msg - Message structure received from telemetry unit
 *       with 8 bit power and state field (msg.power_state_field) and 32 bit
 *       sampling rates field (msg.sampling_rate_field).
 *
@@ -62,16 +93,19 @@ void AnlgInInit(void);
 *
 *   Return: None
 ******************************************************************************/
-void AnlgInSet(AnlgInMsg_t);
+void AInSet(ain_msg_t);
 
 /******************************************************************************
-*   ADC1_IRQHandler() - Interrupt handler for ADC1 COCO (conversion complete)
-*   flag. Posts task notification to Analog In Sampler Task.
+*   AINGetData() - Public function to copy current analog in data structure
+*   for use in transmission/storage.
 *
-*   Parameters: None
+*   Parameters:
+*
+*       ain_data_t *ldata - Pointer to caller-side data structure which will
+*       have current data copied to it.
 *
 *   Return: None
 ******************************************************************************/
-void ADC1_IRQHandler(void);
+void AINGetData(ain_data_t *);
 
 #endif /* ANALOGINPUT_H_ */

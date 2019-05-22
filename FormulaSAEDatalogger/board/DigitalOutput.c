@@ -18,7 +18,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/14/2019
+*   Comments up to date as of: 05/22/2019
 *
 *   Created on: 04/26/2019
 *   Author: Anthony Needles
@@ -34,7 +34,7 @@
 #define OUTPUT                      0x01U
 #define BIT_0_MASK        ((uint8_t)0x01U)
 
-/* DOUT pin numbers, DOUT1 and DOUT3 are PORTB, all else are PORTA */
+/* DOUT1 and DOUT3 are PORTB, all else are PORTA. */
 #define DOUT1_STATE_PIN_NUM            1U
 #define DOUT2_STATE_PIN_NUM           28U
 #define DOUT3_STATE_PIN_NUM            0U
@@ -44,7 +44,7 @@
 #define DOUT7_STATE_PIN_NUM           26U
 #define DOUT8_STATE_PIN_NUM           25U
 
-/* DOUT pin numbers, all are PORTA */
+/* PORTA. */
 #define DOUT1_POWER_PIN_NUM           17U
 #define DOUT2_POWER_PIN_NUM           16U
 #define DOUT3_POWER_PIN_NUM           15U
@@ -119,7 +119,7 @@
 #define D8_BIT(x) (((x) >> DOUT8_BIT_NUM) & BIT_0_MASK)
 
 /******************************************************************************
-*   DigOutInit() - Public function to initialize all digital outputs in OFF
+*   DOutInit() - Public function to initialize all digital outputs in OFF
 *   state and supplying 5V. All configuration settings are stored in
 *   doutConfigs structure.
 *
@@ -127,17 +127,11 @@
 *
 *   Return: None
 ******************************************************************************/
-void DigOutInit()
+void DOutInit()
 {
-    /* Enable PORTA and PORTB clocks (all DOUT pins are in PORTA or PORTB). */
     SIM->SCGC5 |= SIM_SCGC5_PORTA(ENABLE);
     SIM->SCGC5 |= SIM_SCGC5_PORTB(ENABLE);
 
-    /* Configure all DOUT pin MUXs to ALT 1 (GPIO), and configure all GPIO as
-     * outputs. This is done for both the power and state pins for each DOUT,
-     * with port name/gpio name/pin number defined in DOUT config structure.
-     * Sets all DOUT pins to initial state/power, which is OFF/5V, as specified
-     * in DOUT config structure. */
     PORTA->PCR[DOUT1_POWER_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
     PORTA->PCR[DOUT2_POWER_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
     PORTA->PCR[DOUT3_POWER_PIN_NUM] = PORT_PCR_MUX(ALT_1_GPIO);
@@ -176,19 +170,19 @@ void DigOutInit()
 }
 
 /******************************************************************************
-*   DigOutSet() - Public function to set digital output states and powers via
+*   DOutSet() - Public function to set digital output states and powers via
 *   requested message structure.
 *
 *   Parameters:
 *
-*       DigOutMsg_t msg - Message structure received from telemetry unit with
+*       dout_msg_t msg - Message structure received from telemetry unit with
 *       8 bit state field (msg.state_field) and 8 bit power field
 *       (msg.power_field). msg.state_field bit 0 corresponds to DOUT1's desired
 *       state, msg.state_field bit 1 corresponds to DOUT2's state, etc.
 *
 *   Return: None
 ******************************************************************************/
-void DigOutSet(DigOutMsg_t msg)
+void DOutSet(dout_msg_t msg)
 {
     /* Convert state/power message to individual state bits for each DOUT and
      * enables/disables output accordingly */
@@ -211,22 +205,4 @@ void DigOutSet(DigOutMsg_t msg)
     (D6_BIT(msg.power_field) == 1U) ? D6_12V : D6_5V;
     (D7_BIT(msg.power_field) == 1U) ? D7_12V : D7_5V;
     (D8_BIT(msg.power_field) == 1U) ? D8_12V : D8_5V;
-
-//    DOUT1_STATE_SET(DOUT1_BIT(msg.state_field));
-//    DOUT2_STATE_SET(DOUT2_BIT(msg.state_field));
-//    DOUT3_STATE_SET(DOUT3_BIT(msg.state_field));
-//    DOUT4_STATE_SET(DOUT4_BIT(msg.state_field));
-//    DOUT5_STATE_SET(DOUT5_BIT(msg.state_field));
-//    DOUT6_STATE_SET(DOUT6_BIT(msg.state_field));
-//    DOUT7_STATE_SET(DOUT7_BIT(msg.state_field));
-//    DOUT8_STATE_SET(DOUT8_BIT(msg.state_field));
-//
-//    DOUT1_POWER_SET(DOUT1_BIT(msg.power_field));
-//    DOUT2_POWER_SET(DOUT2_BIT(msg.power_field));
-//    DOUT3_POWER_SET(DOUT3_BIT(msg.power_field));
-//    DOUT4_POWER_SET(DOUT4_BIT(msg.power_field));
-//    DOUT5_POWER_SET(DOUT5_BIT(msg.power_field));
-//    DOUT6_POWER_SET(DOUT6_BIT(msg.power_field));
-//    DOUT7_POWER_SET(DOUT7_BIT(msg.power_field));
-//    DOUT8_POWER_SET(DOUT8_BIT(msg.power_field));
 }

@@ -8,50 +8,51 @@
 *   The GPS module of the Formula SAE Datalogger obtains real-world time and
 *   date data for accurate timestamps. This configuration will be done once upon
 *   program starting initialization to set the time/date starting point.
-*   Communication from the GPS unit occurs on UART4 at 1Hz.
+*   Communication from the GPS unit occurs on UART4 at 9600 baud.
+*
+*   GPS Unit: L80-R
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/12/2019
+*   Comments up to date as of: 05/22/2019
 *
 *   Created on: 05/10/2019
 *   Author: Anthony Needles
 ******************************************************************************/
-#include "GPS.h"
 #include "MK66F18.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
-
-/******************************************************************************
-*   Private Function Prototypes
-******************************************************************************/
-//void gpsGetTimeTask(void *);
-
-void gpsGetTimeDateBlocking(void);
+#include "GPS.h"
 
 /******************************************************************************
 *   Private Definitions
 ******************************************************************************/
-#define ENABLE                      1U
-#define SET                         1U
-#define DISABLED                 0x00U
-#define ENABLED                  0x01U
-#define BAUD_RATE_DIV           0x186U
-#define BAUD_RATE_FA             0x18U
-#define SINGLE_STOP_BIT             0U
-#define NO_PARITY_BIT               0U
-#define EIGHT_BIT_MODE              0U
-#define SIZE_32_BYTES            0x04U
-#define GPSTIMECOMPTASK_STKSIZE   256U
-#define GPSTIMECOMPTASK_PRIORITY    5U
-#define GPSTIMECOMPTASK_WAIT_MS 60000U
+#define ENABLE                         1U
+#define SET                            1U
+#define DISABLED                    0x00U
+#define ENABLED                     0x01U
+#define BAUD_RATE_DIV              0x186U
+#define BAUD_RATE_FA                0x0CU
+#define SINGLE_STOP_BIT                0U
+#define NO_PARITY_BIT                  0U
+#define EIGHT_BIT_MODE                 0U
+#define SIZE_32_BYTES               0x04U
+#define ALT_3_UART                  0x03U
+#define PIT0                        0x00U
+#define PIT_100HZ_LDVAL           599999U
+#define RX_BYTES                      12U
+#define DOUT1_STATE_PIN_NUM            1U
+#define TIMEOUT_MS                    14U
 
-#define UART4_RX_PIN_NUM           25U
-#define UART4_TX_PIN_NUM           24U
-#define ALT_3_UART               0x03U
-#define RX_BYTES                   57U
+#define GPSTENMSTASK_STKSIZE         256U
+#define GPSTENMSTASK_PRIORITY         10U
 
+/* PORTE. */
+#define UART4_RX_PIN_NUM              25U
+#define UART4_TX_PIN_NUM              24U
+
+/* Status flags. */
 #define RX_DATA_FLAG (((UART4->S1) & UART_S1_RDRF_MASK) >> UART_S1_RDRF_SHIFT)
 
 /* Enumerations for GPS UART Rx state machine */
@@ -62,33 +63,32 @@ typedef enum
     FIND_MSG_ID,
     SAVE_TIME,
     TIME_SET
-} TimeCompState_t;
-
-/* Time and date structures held as decimal values (yymmdd hhmmss.uuu) */
-typedef struct gpsTimeDateData_t
-{
-    uint8_t year;
-    uint8_t month;
-    uint8_t day;
-    uint8_t hour;
-    uint8_t min;
-    uint8_t sec;
-    uint8_t ms;
-} gpsTimeDateData_t;
+} time_set_state_t;
 
 /******************************************************************************
 *   Private Variables
 ******************************************************************************/
-/* Task handle for GPS time compensation task, used by UART4_RX_TX_IRQHandler to
- * post task notification */
-//static TaskHandle_t gpsTimeCompTaskHandle = NULL;
-
 /* Time and date data received from GPS */
-static gpsTimeDateData_t gpsTimeDateData;
+static gps_data_t gpsCurrentData;
 
+/* Mutex key that will protect gps time structure. Must be pended on
+ * if writing/reading gpsCurrentData is desired to ensure synchronization. */
+static SemaphoreHandle_t gpsCurrentDataKey;
+
+
+/* Task handle for gps 10ms task, used by PIT0_IRQHandler() to post
+ * task notification. */
+static TaskHandle_t gpsTenMSTaskHandle = NULL;
 
 /******************************************************************************
-*   GPSUART4Init() - Public function to configure UART4 for reception of GPS
+*   Private Function Prototypes
+******************************************************************************/
+static void gpsGetTimeDateBlocking(void);
+
+static void gpsTenMSTask(void *);
+
+/******************************************************************************
+*   GPSInit() - Public function to configure UART4 for reception of GPS
 *   NMEA time and date data. This data will serve as the starting point of
 *   the datalogger's timestamps.
 *
@@ -96,9 +96,9 @@ static gpsTimeDateData_t gpsTimeDateData;
 *
 *   Return: None
 ******************************************************************************/
-void GPSUART4Init()
+void GPSInit()
 {
-//    BaseType_t task_create_return;
+    BaseType_t task_create_return;
 
     SIM->SCGC1 |= SIM_SCGC1_UART4(ENABLE);
     SIM->SCGC5 |= SIM_SCGC5_PORTE(ENABLE);
@@ -109,36 +109,210 @@ void GPSUART4Init()
     /* Baud rate = Module clock / (16 × (BAUD_RATE_DIV + BAUD_RATE_FA))
      * Module clock = 60MHz, BRD = 390, BRFA = 0.375
      * Baud rate = ~9606 */
-    UART4->BDH = ((UART4->BDH & ~UART_BDH_SBR_MASK &
-                   ~UART_BDH_SBNS_MASK) |
-                   UART_BDH_SBNS(SINGLE_STOP_BIT) |
-                   (uint8_t)(BAUD_RATE_DIV >> 8));
-
+    UART4->BDH = (uint8_t)(BAUD_RATE_DIV >> 8);
     UART4->BDL = (uint8_t)(BAUD_RATE_DIV);
     UART4->C4 = (uint8_t)(BAUD_RATE_FA);
 
-    /* No parity bit, eight bit mode */
-    UART4->C1 = ((UART4->C1 & ~UART_C1_PE_MASK & ~UART_C1_M_MASK) |
-                  UART_C1_PE(NO_PARITY_BIT) |
-                  UART_C1_M(EIGHT_BIT_MODE));
+    /* No parity bit, eight bit mode. */
+    UART4->C1 =  (UART_C1_PE(NO_PARITY_BIT) | UART_C1_M(EIGHT_BIT_MODE));
 
-    gpsGetTimeDateBlocking();
+    /* PIT0 initialization for 10ms period, 100Hz trigger frequency. */
+    SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
+    PIT->MCR &= ~PIT_MCR_MDIS(ENABLE);
+    PIT->CHANNEL[PIT0].LDVAL = PIT_100HZ_LDVAL;
+    PIT->CHANNEL[PIT0].TCTRL |= (PIT_TCTRL_TIE(ENABLE) | PIT_TCTRL_TEN(ENABLE));
 
-    /* Enable UART4 interrupts (for RIE ISR), with priority change for use
-     * with FreeRTOS */
-//    NVIC_SetPriority(UART4_RX_TX_IRQn, 2U);
-//    NVIC_ClearPendingIRQ(UART4_RX_TX_IRQn);
-//    NVIC_EnableIRQ(UART4_RX_TX_IRQn);
+    gpsCurrentData.year  = 0x00U;
+    gpsCurrentData.month = 0x00U;
+    gpsCurrentData.day   = 0x00U;
+    gpsCurrentData.hour  = 0x00U;
+    gpsCurrentData.min   = 0x00U;
+    gpsCurrentData.sec   = 0x00U;
+    gpsCurrentData.ms    = 0x00U;
 
-    /* Create GPS time compensation task */
-//    task_create_return = xTaskCreate(gpsGetTimeTask,
-//                                     "GPS Time Compensation Task",
-//                                     GPSTIMECOMPTASK_STKSIZE,
-//                                     NULL,
-//                                     GPSTIMECOMPTASK_PRIORITY,
-//                                     &gpsTimeCompTaskHandle);
-//
-//    while(task_create_return == pdFAIL){ /* Error trap */ }
+    gpsCurrentDataKey = xSemaphoreCreateMutex();
+    while(gpsCurrentDataKey == NULL){ /* Error trap */ }
+
+    task_create_return = xTaskCreate(gpsTenMSTask,
+                                     "GPS Ten MS Task",
+                                     GPSTENMSTASK_STKSIZE,
+                                     NULL,
+                                     GPSTENMSTASK_PRIORITY,
+                                     &gpsTenMSTaskHandle);
+
+    while(task_create_return == pdFAIL){ /* Error trap */ }
+
+    NVIC_SetPriority(PIT0_IRQn, 2U);
+    NVIC_ClearPendingIRQ(PIT0_IRQn);
+    NVIC_EnableIRQ(PIT0_IRQn);
+
+//    gpsGetTimeDateBlocking();
+}
+
+/******************************************************************************
+*   gpsTenMSTask() - Upon task post by PIT0 IRQ (every 10ms), increments
+*   tens-of-milliseconds count, handling all overflow for seconds, minutes,
+*   hours, days, months, years. Handles differing day count in months, except
+*   for leap years. Does not compute day light savings.
+*
+*   Parameters:
+*
+*       void *pvParameters - A value that will passed into the task when it is
+*       created as the task's parameter. Not used for this task.
+*
+*   Return: None
+******************************************************************************/
+static void gpsTenMSTask(void *pvParameters)
+{
+    uint8_t notify_count;
+
+    while(1)
+    {
+        /* Place task into idle state until PIT0 ISR notifies task. */
+        notify_count = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(TIMEOUT_MS));
+        if(notify_count == 0)
+        { /* If this takes longer than 1ms, go to ERROR state. */
+            while(1){}
+        } else {}
+
+        xSemaphoreTake(gpsCurrentDataKey, portMAX_DELAY);
+
+        /*
+                                                                                  .dm+
+                                                                                  -NMs
+         :hs``/shhy+-                ./syhhy+.               -+yhhys+.          ohdMMmhhhs.
+         +MNhNdsosdMMy`            .yMmy+//sdMd-           `yMNo///oy-          :+sNMh+++/`
+         +MMh:     oMM+           .mMh.     `hMm.          -NMo                   -NMs
+         +MN/      :NMo           +MMhooooooohMN/           oNMds/.`              -NMs
+         +MN/      :NMs           sMMhssssssssso.            `:ohmNmy-            -NMs
+         +MN/      :NMs           :MMo                            -dMm.           -NMs
+         +MN/      :NMs            sMMy:.```-/s+           /o:.```/dMh.           .mMN:..-`
+         +MN:      -NMo             -sdNNNNNmdy-           :hmNNNNmdo.             :hNMMNh.
+         `..        ..`                ``..``                ``...`                  `..`
+
+        */
+        if(gpsCurrentData.ms >= 99U){
+            gpsCurrentData.ms = 0;
+            if(gpsCurrentData.sec >= 59U){
+                gpsCurrentData.sec = 0;
+                if(gpsCurrentData.min >= 59U){
+                    gpsCurrentData.min = 0;
+                    if(gpsCurrentData.hour >= 23U){
+                        gpsCurrentData.hour = 0;
+                        /* thank pope greg */
+                        switch(gpsCurrentData.month)
+                        {
+                            case 2:
+                                if(gpsCurrentData.day >= 28U){
+                                    gpsCurrentData.day = 1;
+                                    if(gpsCurrentData.month >= 12U){
+                                        gpsCurrentData.month = 1;
+                                        gpsCurrentData.year++;
+                                    } else {
+                                        gpsCurrentData.month++;
+                                    }
+                                } else {
+                                    gpsCurrentData.day++;
+                                }
+                                break;
+
+                            case 4:
+                            case 6:
+                            case 9:
+                            case 11:
+                                if(gpsCurrentData.day >= 30U){
+                                    gpsCurrentData.day = 1;
+                                    if(gpsCurrentData.month >= 12U){
+                                        gpsCurrentData.month = 1;
+                                        gpsCurrentData.year++;
+                                    } else {
+                                        gpsCurrentData.month++;
+                                    }
+                                } else {
+                                    gpsCurrentData.day++;
+                                }
+                                break;
+
+                            case 1:
+                            case 3:
+                            case 5:
+                            case 7:
+                            case 8:
+                            case 10:
+                            case 12:
+                                if(gpsCurrentData.day >= 31U){
+                                    gpsCurrentData.day = 1;
+                                    if(gpsCurrentData.month >= 12U){
+                                        gpsCurrentData.month = 1;
+                                        gpsCurrentData.year++;
+                                    } else {
+                                        gpsCurrentData.month++;
+                                    }
+                                } else {
+                                    gpsCurrentData.day++;
+                                }
+                                break;
+
+                            default:
+                                break;
+                        }
+                    } else {
+                        gpsCurrentData.hour++;
+                    }
+                } else {
+                    gpsCurrentData.min++;
+                }
+            } else {
+                gpsCurrentData.sec++;
+            }
+        } else {
+            gpsCurrentData.ms++;
+        }
+
+        xSemaphoreGive(gpsCurrentDataKey);
+    }
+}
+
+/******************************************************************************
+*   PIT0_IRQHandler() - Interrupt handler for PIT0 TIF (timer interrupt) flag.
+*   Occurs at 100Hz. Triggers 10ms increment by posting task notify to
+*   gpsTenMSTask.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+void PIT0_IRQHandler()
+{
+    BaseType_t xHigherPriorityTaskWoken;
+    xHigherPriorityTaskWoken = pdFALSE;
+
+    PIT->CHANNEL[PIT0].TFLG |= PIT_TFLG_TIF_MASK;
+
+    vTaskNotifyGiveFromISR(gpsTenMSTaskHandle, &xHigherPriorityTaskWoken);
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+/******************************************************************************
+*   GPSGetData() - Public function to copy current GPS data structure
+*   for use in transmission/storage.
+*
+*   Parameters:
+*
+*       gps_time_date_data_t *ldata - Pointer to caller-side data structure
+*       which will have current data copied to it.
+*
+*   Return: None
+******************************************************************************/
+void GPSGetData(gps_data_t *ldata)
+{
+    /* Pend on Mutex to update data structure */
+    xSemaphoreTake(gpsCurrentDataKey, portMAX_DELAY);
+
+    *ldata = gpsCurrentData;
+
+    xSemaphoreGive(gpsCurrentDataKey);
 }
 
 /******************************************************************************
@@ -177,13 +351,16 @@ void GPSUART4Init()
 *
 *   Return: None
 ******************************************************************************/
-void gpsGetTimeDateBlocking()
+static void gpsGetTimeDateBlocking()
 {
     uint8_t rx_status = ENABLED;
-    TimeCompState_t state = FIND_PREAMBLE;
-    uint8_t temp_read;
-    uint8_t gpsMessage[RX_BYTES];
+    time_set_state_t state = FIND_PREAMBLE;
+    uint8_t temp_read = 0;
     uint8_t invalid_flag;
+    uint8_t gpsMessage[RX_BYTES];
+
+    /* Get rid of warning. */
+    temp_read++;
 
     while(rx_status == ENABLED)
     {
@@ -257,28 +434,22 @@ void gpsGetTimeDateBlocking()
             case TIME_SET:
                 UART4->C2 &= ~UART_C2_RE(ENABLE);
 
-                gpsTimeDateData.year  = (gpsMessage[10] - '0')*10U +
-                                        (gpsMessage[11] - '0');
-
-                gpsTimeDateData.month = (gpsMessage[8] - '0')*10U +
-                                        (gpsMessage[9] - '0');
-
-                gpsTimeDateData.day   = (gpsMessage[6] - '0')*10U +
+                gpsCurrentData.day   = (gpsMessage[6] - '0')*10U +
                                         (gpsMessage[7] - '0');
 
-                gpsTimeDateData.year  = (gpsMessage[10] - '0')*10U +
+                gpsCurrentData.year  = (gpsMessage[10] - '0')*10U +
                                         (gpsMessage[11] - '0');
 
-                gpsTimeDateData.month = (gpsMessage[8] - '0')*10U +
+                gpsCurrentData.month = (gpsMessage[8] - '0')*10U +
                                         (gpsMessage[9] - '0');
 
-                gpsTimeDateData.hour  = (gpsMessage[0] - '0')*10U +
+                gpsCurrentData.hour  = (gpsMessage[0] - '0')*10U +
                                         (gpsMessage[1] - '0');
 
-                gpsTimeDateData.min   = (gpsMessage[2] - '0')*10U +
+                gpsCurrentData.min   = (gpsMessage[2] - '0')*10U +
                                         (gpsMessage[3] - '0');
 
-                gpsTimeDateData.sec   = (gpsMessage[4] - '0')*10U +
+                gpsCurrentData.sec   = (gpsMessage[4] - '0')*10U +
                                         (gpsMessage[5] - '0');
 
                 rx_status = DISABLED;
@@ -289,114 +460,3 @@ void gpsGetTimeDateBlocking()
         }
     }
 }
-
-/******************************************************************************
-*   gpsGetTimeTask() -
-*
-*   Parameters: None
-*
-*   Return: None
-******************************************************************************/
-//void gpsGetTimeTask(void *pvParameters)
-//{
-//    TimeCompState_t state = MAJOR_DELAY;
-//    uint8_t temp_read;
-//
-//    while(1)
-//    {
-//        switch(state)
-//        {
-//            case MAJOR_DELAY:
-//                vTaskDelay(pdMS_TO_TICKS(GPSTIMECOMPTASK_WAIT_MS));
-//                UART4->C2 |= (UART_C2_RE(ENABLE) | UART_C2_RIE(ENABLE));
-//                state = FIND_PREAMBLE;
-//                break;
-//
-//            case FIND_PREAMBLE:
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                state = ((UART4->D == '$') ? FIND_MSG_ID : FRAME_DELAY);
-//                break;
-//
-//            case FRAME_DELAY:
-//                UART4->C2 &= ~(UART_C2_RE(ENABLE) | UART_C2_RIE(ENABLE));
-//                vTaskDelay(pdMS_TO_TICKS(500U));
-//                state = FIND_PREAMBLE;
-//                break;
-//
-//            case FIND_MSG_ID:
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'G'){ state = FRAME_DELAY; }
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'P'){ state = FRAME_DELAY; }
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'R'){ state = FRAME_DELAY; }
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'M'){ state = FRAME_DELAY; }
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'C'){ state = FRAME_DELAY; }
-//
-//                state = SAVE_TIME;
-//                break;
-//
-//            case SAVE_TIME:
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != ','){ state = FRAME_DELAY; }
-//
-//                for(int i = 0; i < 6; i++)
-//                {
-//                    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                    gpsMessage[i] = UART->D;
-//                }
-//
-//                for(int i = 0; i < 5; i++)
-//                {
-//                    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                    temp_read = UART->D;
-//                }
-//
-//                ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                if(UART4->D != 'A'){ state = FRAME_DELAY; }
-//
-//                for(int i = 0; i < 38; i++)
-//                {
-//                    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                    temp_read = UART->D;
-//                }
-//
-//                for(int i = 6; i < 12; i++)
-//                {
-//                    ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-//                    gpsMessage[i] = UART->D;
-//                }
-//
-//                state = TIME_COMP;
-//                break;
-//
-//            case TIME_COMP:
-//                UART4->C2 &= ~(UART_C2_RE(ENABLE) | UART_C2_RIE(ENABLE));
-//
-//                state = MAJOR_DELAY;
-//                break;
-//
-//            default:
-//                break;
-//        }
-//    }
-//}
-
-/******************************************************************************
-*   UART4_RX_TX_IRQHandler() -
-*
-*   Parameters: None
-*
-*   Return: None
-******************************************************************************/
-//void UART4_RX_TX_IRQHandler()
-//{
-//    BaseType_t xHigherPriorityTaskWoken;
-//    xHigherPriorityTaskWoken = pdFALSE;
-//
-//    vTaskNotifyGiveFromISR(gpsTimeCompTaskHandle, &xHigherPriorityTaskWoken);
-//
-//    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-//}
