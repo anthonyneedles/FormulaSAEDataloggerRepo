@@ -38,9 +38,9 @@
 #include "Debug.h"
 
 void main(void) {
-    volatile uint32_t test_int = 0;
+     volatile uint32_t test_int = 0;
 
-    NVIC_SetPriorityGrouping( 0 );
+//    NVIC_SetPriorityGrouping( 0 );
 
 //    dout_msg_t test_msg_dout;
 //    ain_msg_t test_msg_ain;
@@ -58,7 +58,7 @@ void main(void) {
 
 
 
-//    AInInit();
+    AInInit();
 //    test_msg_ain.power_state_field = 0xFF;
 //    test_msg_ain.sampling_rate_field = 0x55AA55AA;
 //    AInSet(test_msg_ain);

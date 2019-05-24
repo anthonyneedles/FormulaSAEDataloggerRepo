@@ -396,11 +396,10 @@ void I2C3_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken;
     xHigherPriorityTaskWoken = pdFALSE;
-
+    DB2_OUTPUT_CLEAR();
     I2C3->S |= I2C_S_IICIF_MASK;
-
     vTaskNotifyGiveFromISR(agSamplerTaskHandle, &xHigherPriorityTaskWoken);
-
+    DB2_OUTPUT_SET();
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
@@ -574,14 +573,13 @@ static void agBusBusyCheck()
 static void agPendOnInterrupt()
 {
     uint8_t notify_count;
-    DB1_OUTPUT_CLEAR();
+
     /* Place task into idle state until I2C3 ISR notifies task. */
-    notify_count = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(1U));
+    notify_count = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
     if(notify_count == 0)
     { /* If this takes longer than 1ms, go to ERROR state. */
         agI2CState = ERROR;
     } else {}
-    DB1_OUTPUT_SET();
 }
 
 /******************************************************************************
@@ -630,15 +628,21 @@ static void agConfigSamplingRate(uint8_t sample_rate)
 
     agPendOnInterrupt();
 
+//    for(int i = 0; i < 400; i++){}
+
     /* Write to gyro config register next. */
     I2C3->D = ADDR_CTRL2_G;
 
     agPendOnInterrupt();
 
+//    for(int i = 0; i < 400; i++){}
+
     /* Write to config reg to set requested sample rate. */
     I2C3->D = ((sample_rate << 4) | CTRL2_G_LOW_NIB);
 
     agPendOnInterrupt();
+
+//    for(int i = 0; i < 400; i++){}
 
     /* Send stop signal. */
     I2C3->C1 &= ~I2C_C1_MST_MASK;

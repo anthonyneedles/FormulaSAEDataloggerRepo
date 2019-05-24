@@ -53,3 +53,6 @@ After many attempts, I have successfully completed an non-blocking, FreeRTOS fri
 
 v0.9.0
 Updated comments and refactored some variable names in AccelGyro, DigitalOutput, GPS, and Analog In modules. Completely finished AccelGyro module. Created Debug module for setting/clearing a GPIO for precise timing measurements. Added 10ms incrementer task in GPS for timestamps. Created Telemetry task, started on Telemetry output task, need to verify UART output in hardware. Need to verify Analog input module.  
+
+v1.0.0 - SOFT RELEASE 
+Completed framework for Telemetry module. Both reception and transmission over UART3 with non-blocking, FreeRTOS friendly UART driver confirmed in hardware. Need to confirm data frame content with wireless telemetry unit for further development of Telemetry module.  

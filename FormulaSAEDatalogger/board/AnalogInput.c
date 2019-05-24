@@ -240,18 +240,18 @@ void AInInit()
     ainCurrentDataKey = xSemaphoreCreateMutex();
     while(ainCurrentDataKey == NULL){ /* Error trap */ }
 
-    task_create_return = xTaskCreate(ainSamplerTask,
-                                     "Analog In Sampler Task",
-                                     AINSAMPLERTASK_STKSIZE,
-                                     NULL,
-                                     AINSAMPLERTASK_PRIORITY,
-                                     &ainSamplerTaskHandle);
+//    task_create_return = xTaskCreate(ainSamplerTask,
+//                                     "Analog In Sampler Task",
+//                                     AINSAMPLERTASK_STKSIZE,
+//                                     NULL,
+//                                     AINSAMPLERTASK_PRIORITY,
+//                                     &ainSamplerTaskHandle);
+//
+//    while(task_create_return == pdFAIL){ /* Error trap */ }
 
-    while(task_create_return == pdFAIL){ /* Error trap */ }
-
-    NVIC_SetPriority(ADC1_IRQn, 2U);
-    NVIC_ClearPendingIRQ(ADC1_IRQn);
-    NVIC_EnableIRQ(ADC1_IRQn);
+//    NVIC_SetPriority(ADC1_IRQn, 2U);
+//    NVIC_ClearPendingIRQ(ADC1_IRQn);
+//    NVIC_EnableIRQ(ADC1_IRQn);
 }
 
 /******************************************************************************
@@ -367,7 +367,7 @@ void AInSet(ain_msg_t msg)
 }
 
 /******************************************************************************
-*   AINGetData() - Public function to copy current analog in data structure
+*   AInGetData() - Public function to copy current analog in data structure
 *   for use in transmission/storage.
 *
 *   Parameters:
@@ -377,7 +377,7 @@ void AInSet(ain_msg_t msg)
 *
 *   Return: None
 ******************************************************************************/
-void AINGetData(ain_data_t *ldata)
+void AInGetData(ain_data_t *ldata)
 {
     /* Pend on Mutex to update data structure */
     xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);

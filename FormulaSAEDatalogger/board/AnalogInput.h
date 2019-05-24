@@ -96,7 +96,7 @@ void ADC1_IRQHandler(void);
 void AInSet(ain_msg_t);
 
 /******************************************************************************
-*   AINGetData() - Public function to copy current analog in data structure
+*   AInGetData() - Public function to copy current analog in data structure
 *   for use in transmission/storage.
 *
 *   Parameters:
@@ -106,6 +106,6 @@ void AInSet(ain_msg_t);
 *
 *   Return: None
 ******************************************************************************/
-void AINGetData(ain_data_t *);
+void AInGetData(ain_data_t *);
 
 #endif /* ANALOGINPUT_H_ */

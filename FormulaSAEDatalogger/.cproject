@@ -252,6 +252,7 @@
 								<option id="com.crt.advproject.linkserver.debug.prevent.debug.1016251202" superClass="com.crt.advproject.linkserver.debug.prevent.debug"/>
 							</tool>
 							<tool id="com.crt.advproject.tool.debug.debug.748925116" name="MCU Debugger"/>
+							<tool id="com.crt.advproject.tool.debug.debug.642872314" name="MCU Debugger"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -516,6 +517,7 @@
 								<option id="com.crt.advproject.linkserver.debug.prevent.release.115413228" superClass="com.crt.advproject.linkserver.debug.prevent.release"/>
 							</tool>
 							<tool id="com.crt.advproject.tool.debug.release.805265367" name="MCU Debugger"/>
+							<tool id="com.crt.advproject.tool.debug.release.2090642291" name="MCU Debugger"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>

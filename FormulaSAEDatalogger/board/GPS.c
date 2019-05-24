@@ -24,6 +24,7 @@
 #include "semphr.h"
 #include "task.h"
 #include "GPS.h"
+#include "Debug.h"
 
 /******************************************************************************
 *   Private Definitions
@@ -46,7 +47,7 @@
 #define TIMEOUT_MS                    14U
 
 #define GPSTENMSTASK_STKSIZE         256U
-#define GPSTENMSTASK_PRIORITY         10U
+#define GPSTENMSTASK_PRIORITY         7U
 
 /* PORTE. */
 #define UART4_RX_PIN_NUM              25U
@@ -113,7 +114,6 @@ void GPSInit()
     UART4->BDL = (uint8_t)(BAUD_RATE_DIV);
     UART4->C4 = (uint8_t)(BAUD_RATE_FA);
 
-    /* No parity bit, eight bit mode. */
     UART4->C1 =  (UART_C1_PE(NO_PARITY_BIT) | UART_C1_M(EIGHT_BIT_MODE));
 
     /* PIT0 initialization for 10ms period, 100Hz trigger frequency. */
@@ -142,11 +142,11 @@ void GPSInit()
 
     while(task_create_return == pdFAIL){ /* Error trap */ }
 
+    //    gpsGetTimeDateBlocking();
+
     NVIC_SetPriority(PIT0_IRQn, 2U);
     NVIC_ClearPendingIRQ(PIT0_IRQn);
     NVIC_EnableIRQ(PIT0_IRQn);
-
-//    gpsGetTimeDateBlocking();
 }
 
 /******************************************************************************
@@ -373,7 +373,6 @@ static void gpsGetTimeDateBlocking()
                 state = ((UART4->D == '$') ? FIND_MSG_ID : FIND_PREAMBLE);
                 break;
 
-
             case FIND_MSG_ID:
                 while(RX_DATA_FLAG != SET){}
                 if(UART4->D != 'G'){ state = FIND_PREAMBLE; }
@@ -390,11 +389,6 @@ static void gpsGetTimeDateBlocking()
                 break;
 
             case SAVE_TIME:
-//                for(int i = 0; i < RX_BYTES; i++)
-//                {
-//                    while(RX_DATA_FLAG != SET){}
-//                    gpsMessage[i] = UART4->D;
-//                }
                 while(RX_DATA_FLAG != SET){}
                 if(UART4->D != ','){ invalid_flag = 1U; }
 
