@@ -49,10 +49,13 @@ v0.7.2
 Analog Input testing provided fault with 12V conditioning, most likely a hardware issue. ADC has not been hardware tested. GPS NMEA UART data successfully parsed, except GPS can not fix inside of the lab, so I will need to test it outside. Successfully communicated with Accel/Gyro via I2C, need to integrate with FreeRTOS task.
 
 v0.8.0
-After many attempts, I have successfully completed an non-blocking, FreeRTOS friendly I2C driver that has been tested to read configure the accelerometer and gyroscope, as well as read and save all sensor data. Comments for the Accel/Gyro module are not yet completely updated.
+After many attempts, I have successfully completed a non-blocking, FreeRTOS friendly I2C driver that has been tested to read configure the accelerometer and gyroscope, as well as read and save all sensor data. Comments for the Accel/Gyro module are not yet completely updated.
 
 v0.9.0
 Updated comments and refactored some variable names in AccelGyro, DigitalOutput, GPS, and Analog In modules. Completely finished AccelGyro module. Created Debug module for setting/clearing a GPIO for precise timing measurements. Added 10ms incrementer task in GPS for timestamps. Created Telemetry task, started on Telemetry output task, need to verify UART output in hardware. Need to verify Analog input module.  
 
 v1.0.0 - SOFT RELEASE 
-Completed framework for Telemetry module. Both reception and transmission over UART3 with non-blocking, FreeRTOS friendly UART driver confirmed in hardware. Need to confirm data frame content with wireless telemetry unit for further development of Telemetry module.  
+Completed framework for Telemetry module. Both reception and transmission over UART3 with non-blocking, FreeRTOS friendly UART driver confirmed in hardware. Need to confirm data frame content with wireless telemetry unit for further development of Telemetry module.
+
+v1.0.1 
+Need to confirm data frame content with wireless telemetry unit for further development of Telemetry module. Completed framework for ECU/DAQ CAN modules. Confirmed transmission/reception over CAN network at 500kb/s using a FreeRTOS friendly implementation of non-blocking fsl CAN driver API. Need to confirm data frame content with ECU and DAQ for further development of ECU and DAQ module.

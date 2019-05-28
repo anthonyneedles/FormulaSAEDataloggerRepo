@@ -35,6 +35,7 @@
 #include "GPS.h"
 #include "AccelGyro.h"
 #include "Telemetry.h"
+#include "ECU.h"
 #include "Debug.h"
 
 void main(void) {
@@ -47,7 +48,7 @@ void main(void) {
 
     ClkCfgRun();
     DebugInit();
-
+    ECUInit();
 
 //    DOutInit();
 //    test_msg_dout.state_field = 0xFFU;
@@ -58,7 +59,7 @@ void main(void) {
 
 
 
-    AInInit();
+//    AInInit();
 //    test_msg_ain.power_state_field = 0xFF;
 //    test_msg_ain.sampling_rate_field = 0x55AA55AA;
 //    AInSet(test_msg_ain);
@@ -66,10 +67,9 @@ void main(void) {
 //    test_msg_ain.sampling_rate_field = 0x55AA55AA;
 //    AInSet(test_msg_ain);
 
-
-    AGInit();
-    GPSInit();
-    TelInit();
+//    AGInit();
+//    GPSInit();
+//    TelInit();
 
     vTaskStartScheduler();
 
