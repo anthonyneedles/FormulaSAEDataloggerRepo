@@ -15,7 +15,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/27/2019
+*   Comments up to date as of: 05/29/2019
 *
 *   Created on: 05/25/2019
 *   Author: Anthony Needles
@@ -72,7 +72,6 @@ static TaskHandle_t ecuInputTaskHandle = NULL;
 static TaskHandle_t ecuOutputTaskHandle = NULL;
 
 static uint32_t ecuCurrentData[2];
-//static uint8_t ecuSendData[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88;
 
 /*******************************************************************************
  * Private Function Prototypes
@@ -127,7 +126,7 @@ void ECUInit()
     /* Setup Rx Message Buffer. */
     mbConfig.format = kFLEXCAN_FrameFormatStandard;
     mbConfig.type = kFLEXCAN_FrameTypeData;
-    mbConfig.id = FLEXCAN_ID_STD(0x123);
+    mbConfig.id = FLEXCAN_ID_STD(0x45);
 
     FLEXCAN_SetRxMbConfig(CAN0, RX_MESSAGE_BUFFER_NUM, &mbConfig, true);
 
@@ -143,7 +142,7 @@ void ECUInit()
     /* Prepare Tx Frame for sending. */
     ecuTxFrame.format = kFLEXCAN_FrameFormatStandard;
     ecuTxFrame.type = kFLEXCAN_FrameTypeData;
-    ecuTxFrame.id = FLEXCAN_ID_STD(0x123);
+    ecuTxFrame.id = FLEXCAN_ID_STD(0x45);
     ecuTxFrame.length = CAN_FRAME_PAYLOAD_BYTES;
 
     /* Send data through Tx Message Buffer. */

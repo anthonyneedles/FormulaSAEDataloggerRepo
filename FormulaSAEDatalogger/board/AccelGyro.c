@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/22/2019
+*   Comments up to date as of: 05/29/2019
 *
 *   Created on: 05/15/2019
 *   Author: Anthony Needles
@@ -36,8 +36,11 @@
 #define SET                                1U
 #define I2C3_SRC_CLK_HZ             60000000U
 #define I2C_BUFFER_SIZE                   12U
-#define PIT_100HZ_LDVAL               599999U
 #define PIT2                            0x02U
+#define PIT_208HZ_LDVAL               288461U
+#define PIT_104HZ_LDVAL               576922U
+#define PIT_52HZ_LDVAL               1153845U
+#define PIT_26HZ_LDVAL               2307691U
 
 #define AGSAMPLERTASK_PRIORITY             8U
 #define AGSAMPLERTASK_STKSIZE            256U
@@ -67,14 +70,21 @@
 /* 500 dps gyro. */
 #define CTRL2_G_LOW_NIB        ((uint8_t)0x4U)
 
-/* Initial sampling rate configuration for accel/gyro.
+/* Sampling rate configuration for accel/gyro.
  * See AGSet() header for values. */
-#define INIT_SAMPLING_RATE    ((uint8_t)0x03U)
+#define SAMP_RATE_26HZ        ((uint8_t)0x00U)
+#define SAMP_RATE_52HZ        ((uint8_t)0x01U)
+#define SAMP_RATE_104HZ       ((uint8_t)0x02U)
+#define SAMP_RATE_208HZ       ((uint8_t)0x03U)
+#define SAMP_RATE_REG_OFFSET  ((uint8_t)0x02U)
 
 /* Status flags. */
 #define I2C_RX_ACK_FLAG ((I2C3->S & I2C_S_RXAK_MASK) >> I2C_S_RXAK_SHIFT)
 #define I2C_BUS_BUSY_FLAG ((I2C3->S & I2C_S_BUSY_MASK) >> I2C_S_BUSY_SHIFT)
 #define I2C_INTERRUPT_FLAG ((I2C3->S & I2C_S_IICIF_MASK) >> I2C_S_IICIF_SHIFT)
+
+/* Blocks for ~4us to meet I2C timing requirements. */
+#define I2C_BUS_FREE_DELAY() for(int i = 0; i < 70; i++){}
 
 /* Enumerations for accel/gyro I2C communication state machine. */
 typedef enum{
@@ -83,8 +93,7 @@ typedef enum{
     WRITE_SUB_ADDR,
     SEND_REPEAT_START,
     READ_DATA,
-    FORMAT_DATA,
-    ERROR
+    FORMAT_DATA
 } ag_i2c_states_t;
 
 /******************************************************************************
@@ -124,6 +133,8 @@ static void agPendOnInterrupt(void);
 
 static void agConfigSamplingRate(uint8_t);
 
+static void agResurrectModule(void);
+
 /******************************************************************************
 *   AGInit() - Public function to configure I2C3 for reception of accelerometer
 *   and gyroscope data. Configuration of Accel/Gyro unit requires setting of
@@ -155,11 +166,11 @@ void AGInit()
     /* PIT2 initialization for 5ms period, 100Hz trigger frequency. */
     SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
     PIT->MCR &= ~PIT_MCR_MDIS(ENABLE);
-    PIT->CHANNEL[PIT2].LDVAL = PIT_100HZ_LDVAL;
+    PIT->CHANNEL[PIT2].LDVAL = PIT_104HZ_LDVAL;
     PIT->CHANNEL[PIT2].TCTRL |= (PIT_TCTRL_TIE(ENABLE) | PIT_TCTRL_TEN(ENABLE));
 
     /* Initial configuration: Sampling rate = 104Hz (BW = 52Hz). */
-    agCurrentData.sampling_rate = INIT_SAMPLING_RATE;
+    agCurrentData.sampling_rate = SAMP_RATE_104HZ;
     agCurrentData.accel_data.x = (uint16_t)0x0000U;
     agCurrentData.accel_data.y = (uint16_t)0x0000U;
     agCurrentData.accel_data.z = (uint16_t)0x0000U;
@@ -170,10 +181,10 @@ void AGInit()
     agI2CState = IDLE;
 
     agCurrentDataKey = xSemaphoreCreateMutex();
-    while(agCurrentDataKey == NULL){ /* Error trap */ }
+    while(agCurrentDataKey == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
 
     agReadStartTrigger = xSemaphoreCreateBinary();
-    while(agCurrentDataKey == NULL){ /* Error trap */ }
+    while(agReadStartTrigger == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
 
     task_create_return = xTaskCreate(agSamplerTask,
                                      "Accel/Gyro Sampler Task",
@@ -182,7 +193,7 @@ void AGInit()
                                      AGSAMPLERTASK_PRIORITY,
                                      &agSamplerTaskHandle);
 
-    while(task_create_return == pdFAIL){ /* Error trap */ }
+    while(task_create_return == pdFAIL){ /* Out of heap memory (DEBUG TRAP). */ }
 
     NVIC_SetPriority(I2C3_IRQn, 2U);
     NVIC_ClearPendingIRQ(I2C3_IRQn);
@@ -358,24 +369,6 @@ static void agSamplerTask(void *pvParameters)
                 agI2CState = IDLE;
                 break;
 
-            case ERROR:
-                NVIC_DisableIRQ(PIT2_IRQn);
-                NVIC_DisableIRQ(I2C3_IRQn);
-
-                xSemaphoreTake(agCurrentDataKey, portMAX_DELAY);
-
-                agCurrentData.accel_data.x = (uint16_t)0x0000U;
-                agCurrentData.accel_data.y = (uint16_t)0x0000U;
-                agCurrentData.accel_data.z = (uint16_t)0x0000U;
-                agCurrentData.gyro_data.x = (uint16_t)0x0000U;
-                agCurrentData.gyro_data.y = (uint16_t)0x0000U;
-                agCurrentData.gyro_data.z = (uint16_t)0x0000U;
-
-                xSemaphoreGive(agCurrentDataKey);
-
-                vTaskDelete(agSamplerTaskHandle);
-                break;
-
             default:
                 break;
         }
@@ -396,10 +389,10 @@ void I2C3_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken;
     xHigherPriorityTaskWoken = pdFALSE;
-    DB2_OUTPUT_CLEAR();
+
     I2C3->S |= I2C_S_IICIF_MASK;
     vTaskNotifyGiveFromISR(agSamplerTaskHandle, &xHigherPriorityTaskWoken);
-    DB2_OUTPUT_SET();
+
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
@@ -438,11 +431,10 @@ void PIT2_IRQHandler()
 *       msg.sampling_rate_field[2:0] corresponds to the requested sample rate
 *       of the accel/gyro. Valid values are:
 *
-*           0x0 - SR of 0Hz,   BW of 0Hz
-*           0x1 - SR of 25Hz,  BW of 12.5Hz
-*           0x2 - SR of 52Hz,  BW of 26Hz
-*           0x3 - SR of 104Hz, BW of 52Hz
-*           0x4 - SR of 208Hz, BW of 104Hz
+*           00b = SR of 26Hz,  0010b written to AG register
+*           01b = SR of 52Hz,  0011b written to AG register
+*           10b = SR of 104Hz, 0100b written to AG register
+*           11b = SR of 208Hz, 0101b written to AG register
 *
 *   Return: None
 ******************************************************************************/
@@ -453,13 +445,10 @@ void AGSet(ag_msg_t msg)
         /* Pend on Mutex to update data structure */
         xSemaphoreTake(agCurrentDataKey, portMAX_DELAY);
 
-        agCurrentData.sampling_rate = msg.sampling_rate_field;;
+        agCurrentData.sampling_rate = msg.sampling_rate_field;
 
         xSemaphoreGive(agCurrentDataKey);
-    } else
-    {
-        while(1){ /* Error trap */ }
-    }
+    } else{}
 }
 
 /******************************************************************************
@@ -507,9 +496,8 @@ static void agNACKFailureCheck()
     } else {}
 
     if(failure_count > 4)
-    { /* Go to ERROR state if 5 repeated failed attempts to receive
-       * an ACK occur. */
-        agI2CState = ERROR;
+    { /* Resurrect if 5 repeated failed attempts to receive an ACK occur. */
+        agResurrectModule();
     } else{}
 }
 
@@ -555,9 +543,8 @@ static void agSamplingRateChangeCheck()
 static void agBusBusyCheck()
 {
     if(I2C_BUS_BUSY_FLAG == SET)
-    { /* Go to ERROR state if bus is busy, this should never happen
-       * here. */
-        agI2CState = ERROR;
+    { /* Resurrect if bus is busy, this should never happen here. */
+        agResurrectModule();
     } else {}
 }
 
@@ -577,8 +564,8 @@ static void agPendOnInterrupt()
     /* Place task into idle state until I2C3 ISR notifies task. */
     notify_count = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
     if(notify_count == 0)
-    { /* If this takes longer than 1ms, go to ERROR state. */
-        agI2CState = ERROR;
+    { /* Resurrect if failed to be notified. */
+        agResurrectModule();
     } else {}
 }
 
@@ -612,7 +599,7 @@ static void agConfigSamplingRate(uint8_t sample_rate)
     agPendOnInterrupt();
 
     /* Write to config reg to set requested sample rate. */
-    I2C3->D = ((sample_rate << 4) | CTRL1_XL_LOW_NIB);
+    I2C3->D = (((sample_rate + SAMP_RATE_REG_OFFSET) << 4) | CTRL1_XL_LOW_NIB);
 
     agPendOnInterrupt();
 
@@ -620,7 +607,7 @@ static void agConfigSamplingRate(uint8_t sample_rate)
     I2C3->C1 &= ~I2C_C1_MST_MASK;
 
     /* Delay for bus free time. */
-    for(int i = 0; i < 1000; i++){}
+    I2C_BUS_FREE_DELAY();
 
     /* Send start signal followed by slave address (write). */
     I2C3->C1 |= (I2C_C1_TX(ENABLE) | I2C_C1_MST(ENABLE));
@@ -628,25 +615,69 @@ static void agConfigSamplingRate(uint8_t sample_rate)
 
     agPendOnInterrupt();
 
-//    for(int i = 0; i < 400; i++){}
 
     /* Write to gyro config register next. */
     I2C3->D = ADDR_CTRL2_G;
 
     agPendOnInterrupt();
 
-//    for(int i = 0; i < 400; i++){}
-
     /* Write to config reg to set requested sample rate. */
-    I2C3->D = ((sample_rate << 4) | CTRL2_G_LOW_NIB);
+    I2C3->D = (((sample_rate + SAMP_RATE_REG_OFFSET) << 4) | CTRL2_G_LOW_NIB);
 
     agPendOnInterrupt();
-
-//    for(int i = 0; i < 400; i++){}
 
     /* Send stop signal. */
     I2C3->C1 &= ~I2C_C1_MST_MASK;
 
     /* Delay for bus free time. */
-    for(int i = 0; i < 1000; i++){}
+    I2C_BUS_FREE_DELAY();
+
+    /* Change PIT trigger frequency for sampler task. */
+    switch(sample_rate)
+    {
+        case SAMP_RATE_26HZ:
+            PIT->CHANNEL[PIT2].LDVAL = PIT_26HZ_LDVAL;
+            break;
+
+        case SAMP_RATE_52HZ:
+            PIT->CHANNEL[PIT2].LDVAL = PIT_52HZ_LDVAL;
+            break;
+
+        case SAMP_RATE_104HZ:
+            PIT->CHANNEL[PIT2].LDVAL = PIT_104HZ_LDVAL;
+            break;
+
+        case SAMP_RATE_208HZ:
+            PIT->CHANNEL[PIT2].LDVAL = PIT_208HZ_LDVAL;
+            break;
+
+        default:
+            break;
+    }
+}
+
+/******************************************************************************
+*   agResurrectModule() - Private function that attempts so solve an
+*   error by reinitializing module. Disables preemption and interrupts of a
+*   system priority <= configMAX_SYSCALL_INTERRUPT_PRIORITY (effectively, these
+*   are interrupts set to have a priority <= 1 by NVIC_SetPriority()) when
+*   deleting RTOS structures.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+static void agResurrectModule()
+{
+    taskENTER_CRITICAL();
+
+    NVIC_DisableIRQ(I2C3_IRQn);
+    NVIC_DisableIRQ(PIT2_IRQn);
+    vSemaphoreDelete(agCurrentDataKey);
+    vSemaphoreDelete(agReadStartTrigger);
+    vTaskDelete(agSamplerTaskHandle);
+
+    taskEXIT_CRITICAL();
+
+    AGInit();
 }

@@ -14,7 +14,7 @@
 *
 *   MCU: MK66FN2M0VLQ18R
 *
-*   Comments up to date as of: 05/22/2019
+*   Comments up to date as of: 05/29/2019
 *
 *   Created on: 05/15/2019
 *   Author: Anthony Needles
@@ -31,7 +31,7 @@ typedef struct ag_msg_t
     uint8_t sampling_rate_field;
 } ag_msg_t;
 
-/* Structure definition for a sensor that collects data in 3 dimensions. */
+/* Structure definition for sensors that collect data in 3 dimensions. */
 typedef struct sensor_3d_t
 {
     uint16_t x;

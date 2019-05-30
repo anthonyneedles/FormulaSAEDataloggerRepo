@@ -24,6 +24,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
+#include "Debug.h"
 
 /******************************************************************************
 *   Private Definitions
@@ -33,9 +34,10 @@
 #define ALT_1_GPIO                  0x01U
 #define OUTPUT                      0x01U
 #define BIT_0_MASK        ((uint8_t)0x01U)
-#define BYTE_0_MASK      ((uint32_t)0xFFU)
+#define SAMP_RATE_MASK    ((uint8_t)0x03U)
 #define PIT1                        0x01U
 #define PIT_8KHZ_LDVAL              7499U
+#define PIT_200HZ_LDVAL           299999U
 #define PIT1_TRG                    0x05U
 #define BUS_CLK                     0x00U
 #define MODE_12BIT                  0x01U
@@ -45,6 +47,7 @@
 #define AVG_32_SAMP                 0x03U
 #define HW_TRG                      0x01U
 #define SINGLE_ENDED                0x00U
+#define SAMP_RATE_100HZ             0x02U
 
 #define AINSAMPLERTASK_PRIORITY        4U
 #define AINSAMPLERTASK_STKSIZE       256U
@@ -79,9 +82,9 @@
 
 /* Bit offset for each AIN sampling rate position in SR message. */
 #define AIN1_SR_OFFSET      ((uint32_t)0U)
-#define AIN2_SR_OFFSET      ((uint32_t)8U)
-#define AIN3_SR_OFFSET     ((uint32_t)16U)
-#define AIN4_SR_OFFSET     ((uint32_t)24U)
+#define AIN2_SR_OFFSET      ((uint32_t)2U)
+#define AIN3_SR_OFFSET      ((uint32_t)4U)
+#define AIN4_SR_OFFSET      ((uint32_t)6U)
 
 /* Sets AIN power pin, providing 12V power to AIN sensor. */
 #define A1_PWR_12V (GPIOB->PDOR |= ((1U) << AIN1_POWER_PIN_NUM))
@@ -111,9 +114,6 @@
 #define COCO_FLAG ((ADC1->SC1[0] & ADC_SC1_COCO_MASK) >> ADC_SC1_COCO_SHIFT)
 #define CALI_FAIL_FLAG ((ADC1->SC3 & ADC_SC3_CALF_MASK) >> ADC_SC3_CALF_SHIFT)
 
-/******************************************************************************
-*   Private Macros
-******************************************************************************/
 /* Macros accepting 8 bit field to find and isolate AIN's power bit and
  * shift over to bit 0 position for relevant SET function */
 #define AIN1_POWER_BIT(x) (((x) >> AIN1_POWER_BIT_NUM) & BIT_0_MASK)
@@ -132,12 +132,12 @@
 #define AIN3_COND_BIT(x) (AIN3_POWER_BIT(x))
 #define AIN4_COND_BIT(x) (AIN4_POWER_BIT(x))
 
-/* Macros accepting 32 bit field to find and isolate AIN's sampling rate byte
+/* Macros accepting 8 bit field to find and isolate AIN's sampling rate byte
  * and shift over to bits [0:7], then casting to individual 8-bit value */
-#define AIN1_SAMP_RATE(x) ((uint8_t)(((x) >> AIN1_SR_OFFSET) & BYTE_0_MASK))
-#define AIN2_SAMP_RATE(x) ((uint8_t)(((x) >> AIN2_SR_OFFSET) & BYTE_0_MASK))
-#define AIN3_SAMP_RATE(x) ((uint8_t)(((x) >> AIN3_SR_OFFSET) & BYTE_0_MASK))
-#define AIN4_SAMP_RATE(x) ((uint8_t)(((x) >> AIN4_SR_OFFSET) & BYTE_0_MASK))
+#define AIN1_SAMP_RATE(x) ((uint8_t)(((x) >> AIN1_SR_OFFSET) & SAMP_RATE_MASK))
+#define AIN2_SAMP_RATE(x) ((uint8_t)(((x) >> AIN2_SR_OFFSET) & SAMP_RATE_MASK))
+#define AIN3_SAMP_RATE(x) ((uint8_t)(((x) >> AIN3_SR_OFFSET) & SAMP_RATE_MASK))
+#define AIN4_SAMP_RATE(x) ((uint8_t)(((x) >> AIN4_SR_OFFSET) & SAMP_RATE_MASK))
 
 /******************************************************************************
 *   Private Variables
@@ -154,12 +154,18 @@ static SemaphoreHandle_t ainCurrentDataKey;
  * task notification. */
 static TaskHandle_t ainSamplerTaskHandle = NULL;
 
+static uint8_t ainADCSample;
+
+static uint8_t ainCurrentChannel;
+
 /******************************************************************************
 *   Private Function Prototypes
 ******************************************************************************/
 static void ainCalibrateADC1(void);
 
 static void ainSamplerTask(void *);
+
+static void ainResurrectModule(void);
 
 /******************************************************************************
 *   AInInit() - Public function to configure all GPIO used as power and
@@ -206,7 +212,7 @@ void AInInit()
     /* PIT1 initialization for 125us period, 8kHz trigger frequency */
     SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
     PIT->MCR &= ~PIT_MCR_MDIS(ENABLE);
-    PIT->CHANNEL[PIT1].LDVAL = PIT_8KHZ_LDVAL;
+    PIT->CHANNEL[PIT1].LDVAL = PIT_200HZ_LDVAL;
     PIT->CHANNEL[PIT1].TCTRL |= PIT_TCTRL_TEN(ENABLE);
 
     /* ADC1 initialization for PIT1 triggering, 60MHz/8 = 7.5MHz ADCK, 12 bit
@@ -224,38 +230,46 @@ void AInInit()
                  ADC_CFG1_ADLSMP(LONG_SAMPLES) | ADC_CFG1_ADIV(CLK_DIV_8);
 
     ADC1->CFG2 = ADC_CFG2_MUXSEL(B_CHNLS);
-//    anlginCalibrateADC1();
+    ainCalibrateADC1();
     ADC1->SC2 = ADC_SC2_ADTRG(HW_TRG);
 
+    ainCurrentChannel = AIN1_SIG_CHNL;
+
     ADC1->SC1[0] = ADC_SC1_AIEN(ENABLE) | ADC_SC1_DIFF(SINGLE_ENDED) |
-                   ADC_SC1_ADCH(AIN1_SIG_CHNL);
+                   ADC_SC1_ADCH(ainCurrentChannel);
 
     /* Initial configuration: 5V input conditioning and 5V power supply. */
     ainCurrentData.power_state_field = (uint8_t)0x00U;
-    ainCurrentData.ain1_data = (uint16_t)0x5555U;
-    ainCurrentData.ain2_data = (uint16_t)0xAAAAU;
-    ainCurrentData.ain3_data = (uint16_t)0x5555U;
-    ainCurrentData.ain4_data = (uint16_t)0xAAAAU;
+    ainCurrentData.ain1_data = (uint16_t)0x0000U;
+    ainCurrentData.ain2_data = (uint16_t)0x0000U;
+    ainCurrentData.ain3_data = (uint16_t)0x0000U;
+    ainCurrentData.ain4_data = (uint16_t)0x0000U;
+    ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
+    ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
+    ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
+    ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
 
     ainCurrentDataKey = xSemaphoreCreateMutex();
-    while(ainCurrentDataKey == NULL){ /* Error trap */ }
+    while(ainCurrentDataKey == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
 
-//    task_create_return = xTaskCreate(ainSamplerTask,
-//                                     "Analog In Sampler Task",
-//                                     AINSAMPLERTASK_STKSIZE,
-//                                     NULL,
-//                                     AINSAMPLERTASK_PRIORITY,
-//                                     &ainSamplerTaskHandle);
-//
-//    while(task_create_return == pdFAIL){ /* Error trap */ }
+    task_create_return = xTaskCreate(ainSamplerTask,
+                                     "Analog In Sampler Task",
+                                     AINSAMPLERTASK_STKSIZE,
+                                     NULL,
+                                     AINSAMPLERTASK_PRIORITY,
+                                     &ainSamplerTaskHandle);
 
-//    NVIC_SetPriority(ADC1_IRQn, 2U);
-//    NVIC_ClearPendingIRQ(ADC1_IRQn);
-//    NVIC_EnableIRQ(ADC1_IRQn);
+    while(task_create_return == pdFAIL){ /* Out of heap memory (DEBUG TRAP). */ }
+
+    NVIC_SetPriority(ADC1_IRQn, 2U);
+    NVIC_ClearPendingIRQ(ADC1_IRQn);
+    NVIC_EnableIRQ(ADC1_IRQn);
 }
 
 /******************************************************************************
-*   ainSamplerTask() -
+*   ainSamplerTask() - This FreeRTOS task pends on a task notification that will
+*   be posted whenever a new sample is taken from ADC1. This sample is written
+*   into the corresponding analog input channel from which the sample was taken.
 *
 *   Parameters:
 *
@@ -267,19 +281,39 @@ void AInInit()
 static void ainSamplerTask(void *pvParameters)
 {
     uint32_t notify_count;
-    BaseType_t take_return;
 
     while(1)
     {
+        /* Place task into idle state until ADC1 ISR notifies task. */
         notify_count = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        if(notify_count == 0)
+        { /* Resurrect if failed to be notified. */
+            ainResurrectModule();
+        } else {}
 
-        while(notify_count == 0){ /*Error trap, task notify timed out */ }
+        xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);
 
-        take_return = xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);
+        switch(ainCurrentChannel)
+        {
+            case AIN1_SIG_CHNL:
+                ainCurrentData.ain1_data = ainADCSample;
+                break;
 
-        while(take_return == pdFAIL){ /* Error trap, Mutex key never available */ }
+            case AIN2_SIG_CHNL:
+                ainCurrentData.ain2_data = ainADCSample;
+                break;
 
-        ainCurrentData.ain1_data = ((uint16_t)(ADC1->R[0]));
+            case AIN3_SIG_CHNL:
+                ainCurrentData.ain3_data = ainADCSample;
+                break;
+
+            case AIN4_SIG_CHNL:
+                ainCurrentData.ain4_data = ainADCSample;
+                break;
+
+            default:
+                break;
+        }
 
         xSemaphoreGive(ainCurrentDataKey);
     }
@@ -287,7 +321,9 @@ static void ainSamplerTask(void *pvParameters)
 
 /******************************************************************************
 *   ADC1_IRQHandler() - Interrupt handler for ADC1 COCO (conversion complete)
-*   flag. Posts task notification to Analog In Sampler Task.
+*   flag. Posts task notification to Analog In Sampler Task. Performs a channel
+*   switch on the ADC1 as well as progressing the order of which channel is
+*   currently being sampled.
 *
 *   Parameters: None
 *
@@ -296,11 +332,38 @@ static void ainSamplerTask(void *pvParameters)
 void ADC1_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken;
-//    uint16_t calibration_var;
-//    calibration_var = (uint16_t)(ADC1->SC1[0]);
     xHigherPriorityTaskWoken = pdFALSE;
 
+    switch(ainCurrentChannel)
+    {
+        case AIN1_SIG_CHNL:
+            ainCurrentChannel = AIN2_SIG_CHNL;
+            break;
+
+        case AIN2_SIG_CHNL:
+            ainCurrentChannel = AIN3_SIG_CHNL;
+            break;
+
+        case AIN3_SIG_CHNL:
+            ainCurrentChannel = AIN4_SIG_CHNL;
+            break;
+
+        case AIN4_SIG_CHNL:
+            ainCurrentChannel = AIN1_SIG_CHNL;
+            break;
+
+        default:
+            break;
+    }
+
+    /* Clear channel field and populate with new channel. */
+    ADC1->SC1[0] = ((ADC1->SC1[0] & ~ADC_SC1_ADCH_MASK) | ADC_SC1_ADCH(ainCurrentChannel));
+
+    ainADCSample = ADC1->R[0];
+
+    DB1_OUTPUT_CLEAR();
     vTaskNotifyGiveFromISR(ainSamplerTaskHandle, &xHigherPriorityTaskWoken);
+    DB1_OUTPUT_SET();
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -322,15 +385,15 @@ void ADC1_IRQHandler()
 *       msg.power_state_field[4:7] corresponds to AIN[1:4] state, with a bit of
 *       0 representing a non-active sensor input (1 = active).
 *
-*       msg.sampling_rate_field[0:7] corresponds to AIN1 sampling rate, and
-*       msg.sampling_rate_field[8:15] corresponds to AIN2 sampling rate, etc.
+*       msg.sampling_rate_field[0:1] corresponds to AIN1 sampling rate, and
+*       msg.sampling_rate_field[2:3] corresponds to AIN2 sampling rate, and
+*       msg.sampling_rate_field[4:5] corresponds to AIN3 sampling rate, and
+*       msg.sampling_rate_field[6:7] corresponds to AIN4 sampling rate.
 *
 *   Return: None
 ******************************************************************************/
 void AInSet(ain_msg_t msg)
 {
-    BaseType_t take_return;
-
     /* Convert power/conditioning message to individual bits for each AIN and
      * changes power output and input conditioning accordingly */
     (AIN1_POWER_BIT(msg.power_state_field) == 1U) ? A1_PWR_12V : A1_PWR_5V;
@@ -343,19 +406,8 @@ void AInSet(ain_msg_t msg)
     (AIN3_COND_BIT(msg.power_state_field) == 1U) ? A3_COND_12V : A3_COND_5V;
     (AIN4_COND_BIT(msg.power_state_field) == 1U) ? A4_COND_12V : A4_COND_5V;
 
-//    AIN1_POWER_SET(AIN1_POWER_BIT(msg.power_state_field));
-//    AIN2_POWER_SET(AIN2_POWER_BIT(msg.power_state_field));
-//    AIN3_POWER_SET(AIN3_POWER_BIT(msg.power_state_field));
-//    AIN4_POWER_SET(AIN4_POWER_BIT(msg.power_state_field));
-//
-//    AIN1_COND_SET(AIN1_COND_BIT(msg.power_state_field));
-//    AIN2_COND_SET(AIN2_COND_BIT(msg.power_state_field));
-//    AIN3_COND_SET(AIN3_COND_BIT(msg.power_state_field));
-//    AIN4_COND_SET(AIN4_COND_BIT(msg.power_state_field));
-
-    /* Pend on Mutex to update data structure */
-    take_return = xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);
-    while(take_return == pdFAIL){ /* Error trap, Mutex key never available */ };
+    /* Pend on Mutex to update data structure. */
+    xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);
 
     ainCurrentData.power_state_field = msg.power_state_field;
     ainCurrentData.ain1_samp_rate = AIN1_SAMP_RATE(msg.sampling_rate_field);
@@ -429,4 +481,28 @@ static void ainCalibrateADC1()
    /* Hardware averaging 32 samples is disabled as it is not wanted to normal
     * operation. */
    ADC1->SC3 &= ~(ADC_SC3_AVGE_MASK | ADC_SC3_AVGS_MASK);
+}
+
+/******************************************************************************
+*   ainResurrectModule() - Private function that attempts so solve a timeout
+*   error by reinitializing module. Disables preemption and interrupts of a
+*   system priority <= configMAX_SYSCALL_INTERRUPT_PRIORITY (effectively, these
+*   are interrupts set to have a priority <= 1 by NVIC_SetPriority()) when
+*   deleting RTOS structures.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+static void ainResurrectModule()
+{
+    taskENTER_CRITICAL();
+
+    NVIC_DisableIRQ(ADC1_IRQn);
+    vSemaphoreDelete(ainCurrentDataKey);
+    vTaskDelete(ainSamplerTaskHandle);
+
+    taskEXIT_CRITICAL();
+
+    AInInit();
 }

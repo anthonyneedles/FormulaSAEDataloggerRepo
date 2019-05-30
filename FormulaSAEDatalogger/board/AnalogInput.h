@@ -70,6 +70,7 @@ void AInInit(void);
 *   Return: None
 ******************************************************************************/
 void ADC1_IRQHandler(void);
+void PIT1_IRQHandler(void);
 
 /******************************************************************************
 *   AInSet() - Public function to set power and conditioning pins to achieve

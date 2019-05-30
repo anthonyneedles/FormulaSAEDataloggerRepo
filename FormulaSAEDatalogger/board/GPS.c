@@ -88,6 +88,8 @@ static void gpsGetTimeDateBlocking(void);
 
 static void gpsTenMSTask(void *);
 
+static void gpsResurrectModule(void);
+
 /******************************************************************************
 *   GPSInit() - Public function to configure UART4 for reception of GPS
 *   NMEA time and date data. This data will serve as the starting point of
@@ -131,7 +133,7 @@ void GPSInit()
     gpsCurrentData.ms    = 0x00U;
 
     gpsCurrentDataKey = xSemaphoreCreateMutex();
-    while(gpsCurrentDataKey == NULL){ /* Error trap */ }
+    while(gpsCurrentDataKey == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
 
     task_create_return = xTaskCreate(gpsTenMSTask,
                                      "GPS Ten MS Task",
@@ -140,7 +142,7 @@ void GPSInit()
                                      GPSTENMSTASK_PRIORITY,
                                      &gpsTenMSTaskHandle);
 
-    while(task_create_return == pdFAIL){ /* Error trap */ }
+    while(task_create_return == pdFAIL){ /* Out of heap memory (DEBUG TRAP). */ }
 
     //    gpsGetTimeDateBlocking();
 
@@ -171,26 +173,12 @@ static void gpsTenMSTask(void *pvParameters)
         /* Place task into idle state until PIT0 ISR notifies task. */
         notify_count = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(TIMEOUT_MS));
         if(notify_count == 0)
-        { /* If this takes longer than 1ms, go to ERROR state. */
-            while(1){}
+        { /* Resurrect if failed to be notified after 14ms. */
+            gpsResurrectModule();
         } else {}
 
         xSemaphoreTake(gpsCurrentDataKey, portMAX_DELAY);
 
-        /*
-                                                                                  .dm+
-                                                                                  -NMs
-         :hs``/shhy+-                ./syhhy+.               -+yhhys+.          ohdMMmhhhs.
-         +MNhNdsosdMMy`            .yMmy+//sdMd-           `yMNo///oy-          :+sNMh+++/`
-         +MMh:     oMM+           .mMh.     `hMm.          -NMo                   -NMs
-         +MN/      :NMo           +MMhooooooohMN/           oNMds/.`              -NMs
-         +MN/      :NMs           sMMhssssssssso.            `:ohmNmy-            -NMs
-         +MN/      :NMs           :MMo                            -dMm.           -NMs
-         +MN/      :NMs            sMMy:.```-/s+           /o:.```/dMh.           .mMN:..-`
-         +MN:      -NMo             -sdNNNNNmdy-           :hmNNNNmdo.             :hNMMNh.
-         `..        ..`                ``..``                ``...`                  `..`
-
-        */
         if(gpsCurrentData.ms >= 99U){
             gpsCurrentData.ms = 0;
             if(gpsCurrentData.sec >= 59U){
@@ -357,7 +345,7 @@ static void gpsGetTimeDateBlocking()
     time_set_state_t state = FIND_PREAMBLE;
     uint8_t temp_read = 0;
     uint8_t invalid_flag;
-    uint8_t gpsMessage[RX_BYTES];
+    uint8_t message_buffer[RX_BYTES];
 
     /* Get rid of warning. */
     temp_read++;
@@ -375,15 +363,39 @@ static void gpsGetTimeDateBlocking()
 
             case FIND_MSG_ID:
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'G'){ state = FIND_PREAMBLE; }
+                if(UART4->D != 'G')
+                {
+                    state = FIND_PREAMBLE;
+                    break;
+                }
+
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'P'){ state = FIND_PREAMBLE; }
+                if(UART4->D != 'P')
+                {
+                    state = FIND_PREAMBLE;
+                    break;
+                }
+
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'R'){ state = FIND_PREAMBLE; }
+                if(UART4->D != 'R')
+                {
+                    state = FIND_PREAMBLE;
+                    break;
+                }
+
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'M'){ state = FIND_PREAMBLE; }
+                if(UART4->D != 'M')
+                {
+                    state = FIND_PREAMBLE;
+                    break;
+                }
+
                 while(RX_DATA_FLAG != SET){}
-                if(UART4->D != 'C'){ state = FIND_PREAMBLE; }
+                if(UART4->D != 'C')
+                {
+                    state = FIND_PREAMBLE;
+                    break;
+                }
 
                 state = SAVE_TIME;
                 break;
@@ -395,7 +407,7 @@ static void gpsGetTimeDateBlocking()
                 for(int i = 0; i < 6; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
-                    gpsMessage[i] = UART4->D;
+                    message_buffer[i] = UART4->D;
                 }
 
                 for(int i = 0; i < 5; i++)
@@ -419,7 +431,7 @@ static void gpsGetTimeDateBlocking()
                 for(int i = 6; i < 12; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
-                    gpsMessage[i] = UART4->D;
+                    message_buffer[i] = UART4->D;
                 }
 
                 (invalid_flag == SET) ? state = FIND_PREAMBLE : TIME_SET;
@@ -428,23 +440,23 @@ static void gpsGetTimeDateBlocking()
             case TIME_SET:
                 UART4->C2 &= ~UART_C2_RE(ENABLE);
 
-                gpsCurrentData.day   = (gpsMessage[6] - '0')*10U +
-                                        (gpsMessage[7] - '0');
+                gpsCurrentData.day   = (message_buffer[6] - '0')*10U +
+                                        (message_buffer[7] - '0');
 
-                gpsCurrentData.year  = (gpsMessage[10] - '0')*10U +
-                                        (gpsMessage[11] - '0');
+                gpsCurrentData.year  = (message_buffer[10] - '0')*10U +
+                                        (message_buffer[11] - '0');
 
-                gpsCurrentData.month = (gpsMessage[8] - '0')*10U +
-                                        (gpsMessage[9] - '0');
+                gpsCurrentData.month = (message_buffer[8] - '0')*10U +
+                                        (message_buffer[9] - '0');
 
-                gpsCurrentData.hour  = (gpsMessage[0] - '0')*10U +
-                                        (gpsMessage[1] - '0');
+                gpsCurrentData.hour  = (message_buffer[0] - '0')*10U +
+                                        (message_buffer[1] - '0');
 
-                gpsCurrentData.min   = (gpsMessage[2] - '0')*10U +
-                                        (gpsMessage[3] - '0');
+                gpsCurrentData.min   = (message_buffer[2] - '0')*10U +
+                                        (message_buffer[3] - '0');
 
-                gpsCurrentData.sec   = (gpsMessage[4] - '0')*10U +
-                                        (gpsMessage[5] - '0');
+                gpsCurrentData.sec   = (message_buffer[4] - '0')*10U +
+                                        (message_buffer[5] - '0');
 
                 rx_status = DISABLED;
                 break;
@@ -453,4 +465,28 @@ static void gpsGetTimeDateBlocking()
                 break;
         }
     }
+}
+
+/******************************************************************************
+*   gpsResurrectModule() - Private function that attempts so solve a timeout
+*   error by reinitializing module. Disables preemption and interrupts of a
+*   system priority <= configMAX_SYSCALL_INTERRUPT_PRIORITY (effectively, these
+*   are interrupts set to have a priority <= 1 by NVIC_SetPriority()) when
+*   deleting RTOS structures.
+*
+*   Parameters: None
+*
+*   Return: None
+******************************************************************************/
+static void gpsResurrectModule()
+{
+    taskENTER_CRITICAL();
+
+    NVIC_DisableIRQ(PIT0_IRQn);
+    vSemaphoreDelete(gpsCurrentDataKey);
+    vTaskDelete(gpsTenMSTaskHandle);
+
+    taskEXIT_CRITICAL();
+
+    GPSInit();
 }

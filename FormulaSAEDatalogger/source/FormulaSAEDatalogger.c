@@ -39,41 +39,17 @@
 #include "Debug.h"
 
 void main(void) {
-     volatile uint32_t test_int = 0;
-
-//    NVIC_SetPriorityGrouping( 0 );
-
-//    dout_msg_t test_msg_dout;
-//    ain_msg_t test_msg_ain;
+     NVIC_SetPriorityGrouping(0);
 
     ClkCfgRun();
     DebugInit();
     ECUInit();
-
-//    DOutInit();
-//    test_msg_dout.state_field = 0xFFU;
-//    DOutSet(test_msg_dout);
-//    test_msg_dout.power_field = 0x00U;
-//    test_msg_dout.state_field = 0x00U;
-//    DOutSet(test_msg_dout);
-
-
-
-//    AInInit();
-//    test_msg_ain.power_state_field = 0xFF;
-//    test_msg_ain.sampling_rate_field = 0x55AA55AA;
-//    AInSet(test_msg_ain);
-//    test_msg_ain.power_state_field = 0x00;
-//    test_msg_ain.sampling_rate_field = 0x55AA55AA;
-//    AInSet(test_msg_ain);
-
-//    AGInit();
-//    GPSInit();
-//    TelInit();
+    AInInit();
+    AGInit();
+    GPSInit();
+    TelInit();
 
     vTaskStartScheduler();
 
-    while(1){
-        test_int++;
-    }
+    while(1){}
 }

@@ -104,9 +104,6 @@
 #define D7_5V (GPIOA->PDOR &= ~((1U) << DOUT7_POWER_PIN_NUM))
 #define D8_5V (GPIOA->PDOR &= ~((1U) << DOUT8_POWER_PIN_NUM))
 
-/******************************************************************************
-*   Private Macros
-******************************************************************************/
 /* Macros accepting 8 bit field to find and isolate DOUT's relevant bit and
  * shift over to bit 0 position for relevant SET function */
 #define D1_BIT(x) (((x) >> DOUT1_BIT_NUM) & BIT_0_MASK)
