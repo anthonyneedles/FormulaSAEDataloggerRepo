@@ -404,13 +404,13 @@ static void gpsGetTimeDateBlocking()
                 while(RX_DATA_FLAG != SET){}
                 if(UART4->D != ','){ invalid_flag = 1U; }
 
-                for(int i = 0; i < 6; i++)
+                for(uint8_t i = 0; i < 6; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
                     message_buffer[i] = UART4->D;
                 }
 
-                for(int i = 0; i < 5; i++)
+                for(uint8_t i = 0; i < 5; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
                     temp_read = UART4->D;
@@ -419,7 +419,7 @@ static void gpsGetTimeDateBlocking()
                 while(RX_DATA_FLAG != SET){}
                 if(UART4->D != 'A'){ invalid_flag = 1U; }
 
-                for(int i = 0; i < 37; i++)
+                for(uint8_t i = 0; i < 37; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
                     temp_read = UART4->D;
@@ -428,7 +428,7 @@ static void gpsGetTimeDateBlocking()
                 while(RX_DATA_FLAG != SET){}
                 if(UART4->D != ','){ invalid_flag = 1U; }
 
-                for(int i = 6; i < 12; i++)
+                for(uint8_t i = 6; i < 12; i++)
                 {
                     while(RX_DATA_FLAG != SET){}
                     message_buffer[i] = UART4->D;

@@ -370,7 +370,7 @@ static void telGetSensorConfig()
             case SAVE_DATA:
                 /* Capture all data section of frame. This does not include
                  * preamble nor checksum. */
-                for(int i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
+                for(uint8_t i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
                 {
                     telPendOnInterrupt();
                     telConfigMsgBuffer[i] = telRxByteReceived;
@@ -388,7 +388,7 @@ static void telGetSensorConfig()
 
                 /* Perform summation of data section of frame. */
                 calc_checksum = 0;
-                for(int i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
+                for(uint8_t i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
                 {
                     calc_checksum += telConfigMsgBuffer[i];
                 }
@@ -481,7 +481,7 @@ static void telGetDoutState()
             case SAVE_DATA:
                 /* Capture all data section of frame. This does not include
                  * preamble. */
-                for(int i = 0; i < DOUT_FRAME_DATA_BYTES; i++)
+                for(uint8_t i = 0; i < DOUT_FRAME_DATA_BYTES; i++)
                 {
                     telPendOnInterrupt();
                     telDoutMsgBuffer[i] = telRxByteReceived;

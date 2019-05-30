@@ -84,7 +84,7 @@
 #define I2C_INTERRUPT_FLAG ((I2C3->S & I2C_S_IICIF_MASK) >> I2C_S_IICIF_SHIFT)
 
 /* Blocks for ~4us to meet I2C timing requirements. */
-#define I2C_BUS_FREE_DELAY() for(int i = 0; i < 70; i++){}
+#define I2C_BUS_FREE_DELAY() for(uint8_t i = 0; i < 70; i++){}
 
 /* Enumerations for accel/gyro I2C communication state machine. */
 typedef enum{
@@ -324,7 +324,7 @@ static void agSamplerTask(void *pvParameters)
                 dummy = I2C3->D;
 
                 /* Read first 11 bytes with no master provided NACK. */
-                for(int buf_index = 0; buf_index < (I2C_BUFFER_SIZE - 1); buf_index++)
+                for(uint8_t buf_index = 0; buf_index < (I2C_BUFFER_SIZE - 1); buf_index++)
                 {
                     agPendOnInterrupt();
                     agRxBuffer[buf_index] = I2C3->D;
