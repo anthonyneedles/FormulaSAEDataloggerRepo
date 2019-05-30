@@ -10,16 +10,6 @@
 *   requested data is sent, along with a time stamp. In addition, at 2Hz,
 *   configuration data is received by the wireless telemetry unit.
 *
-*   TO DO:
-*       -Finish commenting
-*       -Add DAQ to Datalogger sensor data decoding
-*       -Add Datalogger to DAQ time encoding
-*       -Add Datalogger to DAQ config encoding
-*       -Add ECU to Datalogger data decoding
-*       -Comment fuckin everything else ¯\_(ツ)_/¯
-*       -Mutex for tx/rx bytes?
-*       -Figure delay times for pends
-*
 *   MCU: MK66FN2M0VLQ18R
 *
 *   Comments up to date as of: 05/29/2019
@@ -152,8 +142,8 @@ static ain_data_t telAInData;
 static uint8_t telConfigMsgBuffer[CONFIG_FRAME_DATA_BYTES];
 static uint8_t telDoutMsgBuffer[DOUT_FRAME_DATA_BYTES];
 
-static uint8_t telTxByteToSend;
-static uint8_t telRxByteReceived;
+static volatile uint8_t telTxByteToSend;
+static volatile uint8_t telRxByteReceived;
 
 static uint8_t telIsInitConfigRecieved = FALSE;
 
@@ -403,14 +393,14 @@ static void telGetSensorConfig()
                     calc_checksum += telConfigMsgBuffer[i];
                 }
 
-//                if(calc_checksum != rx_checksum)
-//                {
-//                    rx_status = DISABLED;
-//                    break;
-//                } else
-//                {
+                if(calc_checksum != rx_checksum)
+                {
+                    rx_status = DISABLED;
+                    break;
+                } else
+                {
                     state = SET_MODULES;
-//                }
+                }
                 break;
 
             case SET_MODULES:

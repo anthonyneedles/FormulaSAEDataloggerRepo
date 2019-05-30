@@ -63,8 +63,9 @@ flexcan_handle_t ecuCANHandle;
 flexcan_mb_transfer_t ecuTxXfer, ecuRxXfer;
 flexcan_frame_t ecuTxFrame, ecuRxFrame;
 
-volatile bool txComplete = false;
-volatile bool rxComplete = false;
+/* Primitives come from API. */
+static volatile bool txComplete = false;
+static volatile bool rxComplete = false;
 
 static SemaphoreHandle_t ecuCurrentDataKey;
 

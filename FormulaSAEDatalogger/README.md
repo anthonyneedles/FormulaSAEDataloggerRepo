@@ -61,4 +61,7 @@ v1.0.1
 Need to confirm data frame content with wireless telemetry unit for further development of Telemetry module. Completed framework for ECU/DAQ CAN modules. Confirmed transmission/reception over CAN network at 500kb/s using a FreeRTOS friendly implementation of non-blocking fsl CAN driver API. Need to confirm data frame content with ECU and DAQ for further development of ECU and DAQ module.
 
 v1.1.0 
-Confirmed frame content with wireless telemetry unit. Further development on CAN modules needed. Confirmed complete telemetry recpetion of expected frame with acknowledge, as well as dout acceptance. All multitasking confirmed in hardware to operate peacefully. Developed error handling method of resurrecting modules. Need to verify and finish Analog Input module. 
+Confirmed frame content with wireless telemetry unit. Further development on CAN modules needed. Confirmed complete telemetry recpetion of expected frame with acknowledge, as well as dout acceptance. All multitasking confirmed in hardware to operate peacefully. Developed error handling method of resurrecting modules. Need to verify and finish Analog Input module.
+
+v1.1.1 
+Polished project for release review.  

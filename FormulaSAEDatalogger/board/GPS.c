@@ -144,7 +144,7 @@ void GPSInit()
 
     while(task_create_return == pdFAIL){ /* Out of heap memory (DEBUG TRAP). */ }
 
-    //    gpsGetTimeDateBlocking();
+    gpsGetTimeDateBlocking();
 
     NVIC_SetPriority(PIT0_IRQn, 2U);
     NVIC_ClearPendingIRQ(PIT0_IRQn);

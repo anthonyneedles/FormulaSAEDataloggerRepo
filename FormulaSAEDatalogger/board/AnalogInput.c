@@ -154,9 +154,8 @@ static SemaphoreHandle_t ainCurrentDataKey;
  * task notification. */
 static TaskHandle_t ainSamplerTaskHandle = NULL;
 
-static uint8_t ainADCSample;
-
-static uint8_t ainCurrentChannel;
+static volatile uint8_t ainADCSample;
+static volatile uint8_t ainCurrentChannel;
 
 /******************************************************************************
 *   Private Function Prototypes
@@ -361,9 +360,7 @@ void ADC1_IRQHandler()
 
     ainADCSample = ADC1->R[0];
 
-    DB1_OUTPUT_CLEAR();
     vTaskNotifyGiveFromISR(ainSamplerTaskHandle, &xHigherPriorityTaskWoken);
-    DB1_OUTPUT_SET();
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
