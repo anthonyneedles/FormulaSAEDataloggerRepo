@@ -123,6 +123,8 @@
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void DOutInit()
 {
@@ -164,6 +166,22 @@ void DOutInit()
 
     GPIOB->PDDR |= GPIO_PDDR_PDD((OUTPUT << DOUT1_STATE_PIN_NUM) |
                                  (OUTPUT << DOUT3_STATE_PIN_NUM));
+    D1_OFF;
+    D2_OFF;
+    D3_OFF;
+    D4_OFF;
+    D5_OFF;
+    D6_OFF;
+    D7_OFF;
+    D8_OFF;
+    D1_12V;
+    D2_12V;
+    D3_12V;
+    D4_12V;
+    D5_12V;
+    D6_12V;
+    D7_12V;
+    D8_12V;
 }
 
 /******************************************************************************
@@ -178,6 +196,8 @@ void DOutInit()
 *       state, msg.state_field bit 1 corresponds to DOUT2's state, etc.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void DOutSet(dout_msg_t msg)
 {

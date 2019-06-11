@@ -34,7 +34,7 @@ typedef struct gps_data_t
     uint8_t hour;
     uint8_t min;
     uint8_t sec;
-    uint8_t ms;
+    uint8_t cs;
 } gps_data_t;
 
 /******************************************************************************
@@ -48,6 +48,8 @@ typedef struct gps_data_t
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void GPSInit(void);
 
@@ -59,6 +61,8 @@ void GPSInit(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void PIT0_IRQHandler(void);
 
@@ -72,6 +76,8 @@ void PIT0_IRQHandler(void);
 *       which will have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void GPSGetData(gps_data_t *);
 

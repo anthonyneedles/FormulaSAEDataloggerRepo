@@ -42,7 +42,7 @@
 #define PIT_52HZ_LDVAL               1153845U
 #define PIT_26HZ_LDVAL               2307691U
 
-#define AGSAMPLERTASK_PRIORITY             8U
+#define AGSAMPLERTASK_PRIORITY             6U
 #define AGSAMPLERTASK_STKSIZE            256U
 
 #define FREQ_DIV_VAL_104KHZ   ((uint8_t)0x9CU)
@@ -129,7 +129,7 @@ static void agSamplingRateChangeCheck(void);
 
 static void agBusBusyCheck(void);
 
-static void agPendOnInterrupt(void);
+static void agIdleTaskUntilInterrupt(void);
 
 static void agConfigSamplingRate(uint8_t);
 
@@ -144,6 +144,8 @@ static void agResurrectModule(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AGInit()
 {
@@ -166,11 +168,11 @@ void AGInit()
     /* PIT2 initialization for 5ms period, 100Hz trigger frequency. */
     SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
     PIT->MCR &= ~PIT_MCR_MDIS(ENABLE);
-    PIT->CHANNEL[PIT2].LDVAL = PIT_104HZ_LDVAL;
+    PIT->CHANNEL[PIT2].LDVAL = PIT_208HZ_LDVAL;
     PIT->CHANNEL[PIT2].TCTRL |= (PIT_TCTRL_TIE(ENABLE) | PIT_TCTRL_TEN(ENABLE));
 
     /* Initial configuration: Sampling rate = 104Hz (BW = 52Hz). */
-    agCurrentData.sampling_rate = SAMP_RATE_104HZ;
+    agCurrentData.sampling_rate = SAMP_RATE_208HZ;
     agCurrentData.accel_data.x = (uint16_t)0x0000U;
     agCurrentData.accel_data.y = (uint16_t)0x0000U;
     agCurrentData.accel_data.z = (uint16_t)0x0000U;
@@ -255,6 +257,8 @@ void AGInit()
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agSamplerTask(void *pvParameters)
 {
@@ -290,7 +294,7 @@ static void agSamplerTask(void *pvParameters)
                 I2C3->C1 |= (I2C_C1_TX(ENABLE) | I2C_C1_MST(ENABLE));
                 I2C3->D = ADDR_SLAVE_WRITE;
 
-                agPendOnInterrupt();
+                agIdleTaskUntilInterrupt();
                 break;
 
             case WRITE_SUB_ADDR:
@@ -300,7 +304,7 @@ static void agSamplerTask(void *pvParameters)
                  * be the data in the register (accel x-axis lower byte). */
                 I2C3->D = ADDR_DATA_START;
 
-                agPendOnInterrupt();
+                agIdleTaskUntilInterrupt();
 
                 agNACKFailureCheck();
                 break;
@@ -313,7 +317,7 @@ static void agSamplerTask(void *pvParameters)
                 I2C3->C1 |= I2C_C1_RSTA_MASK;
                 I2C3->D = ADDR_SLAVE_READ;
 
-                agPendOnInterrupt();
+                agIdleTaskUntilInterrupt();
                 break;
 
             case READ_DATA:
@@ -326,7 +330,7 @@ static void agSamplerTask(void *pvParameters)
                 /* Read first 11 bytes with no master provided NACK. */
                 for(uint8_t buf_index = 0; buf_index < (I2C_BUFFER_SIZE - 1); buf_index++)
                 {
-                    agPendOnInterrupt();
+                    agIdleTaskUntilInterrupt();
                     agRxBuffer[buf_index] = I2C3->D;
                 }
 
@@ -334,7 +338,7 @@ static void agSamplerTask(void *pvParameters)
                  * byte, right before the STOP signal. */
                 I2C3->C1 |= I2C_C1_TXAK_MASK;
 
-                agPendOnInterrupt();
+                agIdleTaskUntilInterrupt();
 
                 /* Send stop signal. */
                 I2C3->C1 &= ~I2C_C1_MST_MASK;
@@ -384,6 +388,8 @@ static void agSamplerTask(void *pvParameters)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void I2C3_IRQHandler()
 {
@@ -437,6 +443,8 @@ void PIT2_IRQHandler()
 *           11b = SR of 208Hz, 0101b written to AG register
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AGSet(ag_msg_t msg)
 {
@@ -461,6 +469,8 @@ void AGSet(ag_msg_t msg)
 *       have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AGGetData(ag_data_t *ldata)
 {
@@ -482,6 +492,8 @@ void AGGetData(ag_data_t *ldata)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agNACKFailureCheck()
 {
@@ -510,6 +522,8 @@ static void agNACKFailureCheck()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agSamplingRateChangeCheck()
 {
@@ -539,6 +553,8 @@ static void agSamplingRateChangeCheck()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agBusBusyCheck()
 {
@@ -549,15 +565,17 @@ static void agBusBusyCheck()
 }
 
 /******************************************************************************
-*   agPendOnInterrupt() - Private function that pends on the I2C3 ISR. This will
+*   agIdleTaskUntilInterrupt() - Private function that pends on the I2C3 ISR. This will
 *   trigger upon byte completion, so the task can enter an idle state and allow
 *   the CPU to active other tasks.
 *
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
-static void agPendOnInterrupt()
+static void agIdleTaskUntilInterrupt()
 {
     uint8_t notify_count;
 
@@ -584,6 +602,8 @@ static void agPendOnInterrupt()
 *       gyroscopes's output data rate (ODR), respectively.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agConfigSamplingRate(uint8_t sample_rate)
 {
@@ -591,17 +611,17 @@ static void agConfigSamplingRate(uint8_t sample_rate)
     I2C3->C1 |= (I2C_C1_TX(ENABLE) | I2C_C1_MST(ENABLE));
     I2C3->D = ADDR_SLAVE_WRITE;
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
     /* Write to accel config register first. */
     I2C3->D = ADDR_CTRL1_H;
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
     /* Write to config reg to set requested sample rate. */
     I2C3->D = (((sample_rate + SAMP_RATE_REG_OFFSET) << 4) | CTRL1_XL_LOW_NIB);
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
     /* Send stop signal. */
     I2C3->C1 &= ~I2C_C1_MST_MASK;
@@ -613,18 +633,18 @@ static void agConfigSamplingRate(uint8_t sample_rate)
     I2C3->C1 |= (I2C_C1_TX(ENABLE) | I2C_C1_MST(ENABLE));
     I2C3->D = ADDR_SLAVE_WRITE;
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
 
     /* Write to gyro config register next. */
     I2C3->D = ADDR_CTRL2_G;
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
     /* Write to config reg to set requested sample rate. */
     I2C3->D = (((sample_rate + SAMP_RATE_REG_OFFSET) << 4) | CTRL2_G_LOW_NIB);
 
-    agPendOnInterrupt();
+    agIdleTaskUntilInterrupt();
 
     /* Send stop signal. */
     I2C3->C1 &= ~I2C_C1_MST_MASK;
@@ -666,6 +686,8 @@ static void agConfigSamplingRate(uint8_t sample_rate)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void agResurrectModule()
 {

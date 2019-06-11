@@ -71,6 +71,8 @@ void AGInit(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void I2C3_IRQHandler(void);
 
@@ -81,6 +83,8 @@ void I2C3_IRQHandler(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void PIT2_IRQHandler(void);
 
@@ -106,6 +110,8 @@ void PIT2_IRQHandler(void);
 *           0x4 - SR of 208Hz, BW of 104Hz
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AGSet(ag_msg_t);
 
@@ -119,6 +125,8 @@ void AGSet(ag_msg_t);
 *       have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AGGetData(ag_data_t *);
 

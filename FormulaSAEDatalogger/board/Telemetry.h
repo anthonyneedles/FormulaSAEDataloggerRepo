@@ -30,6 +30,8 @@
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void TelInit(void);
 
@@ -44,6 +46,8 @@ void TelInit(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void UART3_RX_TX_IRQHandler(void);
 

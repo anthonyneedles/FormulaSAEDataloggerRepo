@@ -47,7 +47,7 @@
 #define TIMEOUT_MS                    14U
 
 #define GPSTENMSTASK_STKSIZE         256U
-#define GPSTENMSTASK_PRIORITY         7U
+#define GPSTENMSTASK_PRIORITY          5U
 
 /* PORTE. */
 #define UART4_RX_PIN_NUM              25U
@@ -86,7 +86,7 @@ static TaskHandle_t gpsTenMSTaskHandle = NULL;
 ******************************************************************************/
 static void gpsGetTimeDateBlocking(void);
 
-static void gpsTenMSTask(void *);
+static void gpsTenCSTask(void *);
 
 static void gpsResurrectModule(void);
 
@@ -98,6 +98,8 @@ static void gpsResurrectModule(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void GPSInit()
 {
@@ -124,19 +126,19 @@ void GPSInit()
     PIT->CHANNEL[PIT0].LDVAL = PIT_100HZ_LDVAL;
     PIT->CHANNEL[PIT0].TCTRL |= (PIT_TCTRL_TIE(ENABLE) | PIT_TCTRL_TEN(ENABLE));
 
-    gpsCurrentData.year  = 0x00U;
-    gpsCurrentData.month = 0x00U;
-    gpsCurrentData.day   = 0x00U;
-    gpsCurrentData.hour  = 0x00U;
-    gpsCurrentData.min   = 0x00U;
-    gpsCurrentData.sec   = 0x00U;
-    gpsCurrentData.ms    = 0x00U;
+    gpsCurrentData.year  = 0U;
+    gpsCurrentData.month = 0U;
+    gpsCurrentData.day   = 0U;
+    gpsCurrentData.hour  = 0U;
+    gpsCurrentData.min   = 0U;
+    gpsCurrentData.sec   = 0U;
+    gpsCurrentData.cs    = 0U;
 
     gpsCurrentDataKey = xSemaphoreCreateMutex();
     while(gpsCurrentDataKey == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
 
-    task_create_return = xTaskCreate(gpsTenMSTask,
-                                     "GPS Ten MS Task",
+    task_create_return = xTaskCreate(gpsTenCSTask,
+                                     "GPS Ten CS Task",
                                      GPSTENMSTASK_STKSIZE,
                                      NULL,
                                      GPSTENMSTASK_PRIORITY,
@@ -144,7 +146,7 @@ void GPSInit()
 
     while(task_create_return == pdFAIL){ /* Out of heap memory (DEBUG TRAP). */ }
 
-    gpsGetTimeDateBlocking();
+//    gpsGetTimeDateBlocking();
 
     NVIC_SetPriority(PIT0_IRQn, 2U);
     NVIC_ClearPendingIRQ(PIT0_IRQn);
@@ -163,24 +165,28 @@ void GPSInit()
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
-static void gpsTenMSTask(void *pvParameters)
+static void gpsTenCSTask(void *pvParameters)
 {
     uint8_t notify_count;
 
     while(1)
     {
         /* Place task into idle state until PIT0 ISR notifies task. */
+        DB2_OUTPUT_TOGGLE();
         notify_count = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(TIMEOUT_MS));
         if(notify_count == 0)
         { /* Resurrect if failed to be notified after 14ms. */
             gpsResurrectModule();
         } else {}
+        DB2_OUTPUT_TOGGLE();
 
         xSemaphoreTake(gpsCurrentDataKey, portMAX_DELAY);
 
-        if(gpsCurrentData.ms >= 99U){
-            gpsCurrentData.ms = 0;
+        if(gpsCurrentData.cs >= 99U){
+            gpsCurrentData.cs = 0;
             if(gpsCurrentData.sec >= 59U){
                 gpsCurrentData.sec = 0;
                 if(gpsCurrentData.min >= 59U){
@@ -254,7 +260,7 @@ static void gpsTenMSTask(void *pvParameters)
                 gpsCurrentData.sec++;
             }
         } else {
-            gpsCurrentData.ms++;
+            gpsCurrentData.cs++;
         }
 
         xSemaphoreGive(gpsCurrentDataKey);
@@ -269,6 +275,8 @@ static void gpsTenMSTask(void *pvParameters)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void PIT0_IRQHandler()
 {
@@ -292,6 +300,8 @@ void PIT0_IRQHandler()
 *       which will have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void GPSGetData(gps_data_t *ldata)
 {
@@ -338,6 +348,8 @@ void GPSGetData(gps_data_t *ldata)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void gpsGetTimeDateBlocking()
 {
@@ -477,6 +489,8 @@ static void gpsGetTimeDateBlocking()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void gpsResurrectModule()
 {

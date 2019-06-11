@@ -46,6 +46,8 @@ typedef struct dout_msg_t
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void DOutInit(void);
 
@@ -61,6 +63,8 @@ void DOutInit(void);
 *       state, msg.state_field bit 1 corresponds to DOUT2's state, etc.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void DOutSet(dout_msg_t);
 

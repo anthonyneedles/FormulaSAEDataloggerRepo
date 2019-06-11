@@ -38,6 +38,8 @@
 #define CAN_FRAME_PAYLOAD_BYTES            8U
 #define ALT_2_CAN                       0x02U
 #define CAN0_BAUDRATE                 500000U
+#define RX_MB_NUM                          9U
+#define TX_MB_NUM                          8U
 
 #define ECUINPUTTASK_PRIORITY              5U
 #define ECUINPUTTASK_STKSIZE             256U
@@ -56,23 +58,29 @@
 #define PSEG2                             2U
 #define PROPSEG                           1U
 
+#define DAQ_ID FLEXCAN_ID_STD(0x80U)
+#define SELF_ID FLEXCAN_ID_STD(0x81U)
+
+#define MODULE_ADDR_BYTE           dataByte0
+#define SENSOR_ADDR_BYTE           dataByte1
+#define TIME_SEC_BYTE              dataByte2
+#define TIME_CS_BYTE               dataByte3
+#define DATA_UPPER_BYTE            dataByte4
+#define DATA_LOWER_BYTE            dataByte5
+
 /*******************************************************************************
  * Private Variables
  ******************************************************************************/
 flexcan_handle_t ecuCANHandle;
-flexcan_mb_transfer_t ecuTxXfer, ecuRxXfer;
-flexcan_frame_t ecuTxFrame, ecuRxFrame;
-
-/* Primitives come from API. */
-static volatile bool txComplete = false;
-static volatile bool rxComplete = false;
+flexcan_mb_transfer_t ecuTxXfer;
+flexcan_mb_transfer_t ecuRxXfer;
+flexcan_frame_t ecuTxFrame;
+flexcan_frame_t ecuRxFrame;
 
 static SemaphoreHandle_t ecuCurrentDataKey;
 
 static TaskHandle_t ecuInputTaskHandle = NULL;
 static TaskHandle_t ecuOutputTaskHandle = NULL;
-
-static uint32_t ecuCurrentData[2];
 
 /*******************************************************************************
  * Private Function Prototypes
@@ -92,6 +100,8 @@ static void ecuOutputTask(void *);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void ECUInit()
 {
@@ -120,18 +130,18 @@ void ECUInit()
 
     flexcanConfig.clkSrc = kFLEXCAN_ClkSrcPeri;
     flexcanConfig.baudRate = CAN0_BAUDRATE;
-    flexcanConfig.enableLoopBack = true;
+//    flexcanConfig.enableLoopBack = true;
 
     FLEXCAN_Init(CAN0, &flexcanConfig, CAN0_SRC_CLK_HZ);
 
     /* Setup Rx Message Buffer. */
     mbConfig.format = kFLEXCAN_FrameFormatStandard;
     mbConfig.type = kFLEXCAN_FrameTypeData;
-    mbConfig.id = FLEXCAN_ID_STD(0x45);
+    mbConfig.id = SELF_ID;
 
-    FLEXCAN_SetRxMbConfig(CAN0, RX_MESSAGE_BUFFER_NUM, &mbConfig, true);
+    FLEXCAN_SetRxMbConfig(CAN0, RX_MB_NUM, &mbConfig, true);
 
-    FLEXCAN_SetTxMbConfig(CAN0, TX_MESSAGE_BUFFER_NUM, true);
+    FLEXCAN_SetTxMbConfig(CAN0, TX_MB_NUM, true);
 
     /* Create FlexCAN handle structure and set call back function. */
     FLEXCAN_TransferCreateHandle(CAN0, &ecuCANHandle, ecuCallbackISR, NULL);
@@ -143,7 +153,7 @@ void ECUInit()
     /* Prepare Tx Frame for sending. */
     ecuTxFrame.format = kFLEXCAN_FrameFormatStandard;
     ecuTxFrame.type = kFLEXCAN_FrameTypeData;
-    ecuTxFrame.id = FLEXCAN_ID_STD(0x45);
+    ecuTxFrame.id = DAQ_ID;
     ecuTxFrame.length = CAN_FRAME_PAYLOAD_BYTES;
 
     /* Send data through Tx Message Buffer. */
@@ -191,22 +201,28 @@ void ECUInit()
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ecuInputTask(void *pvParameters)
 {
+    uint32_t msg_id;
+    uint8_t msg_data[8];
+
     while(1)
     {
         FLEXCAN_TransferReceiveNonBlocking(CAN0, &ecuCANHandle, &ecuRxXfer);
 
         ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
 
-        /* Pend on Mutex to update data structure */
-        xSemaphoreTake(ecuCurrentDataKey, portMAX_DELAY);
-
-        ecuCurrentData[0] = ecuRxFrame.dataWord0;
-        ecuCurrentData[1] = ecuRxFrame.dataWord1;
-
-        xSemaphoreGive(ecuCurrentDataKey);
+        msg_data[0] = ecuRxFrame.dataByte0;
+        msg_data[1] = ecuRxFrame.dataByte1;
+        msg_data[2] = ecuRxFrame.dataByte2;
+        msg_data[3] = ecuRxFrame.dataByte3;
+        msg_data[4] = ecuRxFrame.dataByte4;
+        msg_data[5] = ecuRxFrame.dataByte5;
+        msg_data[6] = ecuRxFrame.dataByte6;
+        msg_data[7] = ecuRxFrame.dataByte7;
     }
 }
 
@@ -221,16 +237,19 @@ static void ecuInputTask(void *pvParameters)
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ecuOutputTask(void *pvParameters)
 {
     while(1)
     {
-        ecuTxFrame.dataWord0 = CAN_WORD0_DATA_BYTE_0(0x11) | CAN_WORD0_DATA_BYTE_1(0x22) | CAN_WORD0_DATA_BYTE_2(0x33) |
-                               CAN_WORD0_DATA_BYTE_3(0x44);
+        ecuTxFrame.dataWord0 = CAN_WORD0_DATA_BYTE_0(0x01) | CAN_WORD0_DATA_BYTE_1(0x01) |
+                               CAN_WORD0_DATA_BYTE_2(0x11) | CAN_WORD0_DATA_BYTE_3(0x11);
 
-        ecuTxFrame.dataWord1 = CAN_WORD1_DATA_BYTE_4(0x55) | CAN_WORD1_DATA_BYTE_5(0x66) | CAN_WORD1_DATA_BYTE_6(0x77) |
-                               CAN_WORD1_DATA_BYTE_7(0x88);
+        ecuTxFrame.dataWord1 = CAN_WORD1_DATA_BYTE_4(0x11) | CAN_WORD1_DATA_BYTE_5(0x11) |
+                               CAN_WORD1_DATA_BYTE_6(0x11) | CAN_WORD1_DATA_BYTE_7(0x11);
+
 
         FLEXCAN_TransferSendNonBlocking(CAN0, &ecuCANHandle, &ecuTxXfer);
 
@@ -253,6 +272,8 @@ static void ecuOutputTask(void *pvParameters)
 *       meaning this function should never be called within this module.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ecuCallbackISR(CAN_Type *base, flexcan_handle_t *handle, status_t status, uint32_t result, void *userData)
 {
@@ -265,7 +286,6 @@ static void ecuCallbackISR(CAN_Type *base, flexcan_handle_t *handle, status_t st
         case kStatus_FLEXCAN_RxIdle:
             if (RX_MESSAGE_BUFFER_NUM == result)
             {
-                rxComplete = true;
                 vTaskNotifyGiveFromISR(ecuInputTaskHandle, &xHigherPriorityTaskWoken);
             }
             break;
@@ -274,7 +294,6 @@ static void ecuCallbackISR(CAN_Type *base, flexcan_handle_t *handle, status_t st
         case kStatus_FLEXCAN_TxIdle:
             if (TX_MESSAGE_BUFFER_NUM == result)
             {
-                txComplete = true;
                 vTaskNotifyGiveFromISR(ecuOutputTaskHandle, &xHigherPriorityTaskWoken);
             }
             break;

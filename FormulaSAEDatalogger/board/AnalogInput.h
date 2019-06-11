@@ -58,6 +58,8 @@ typedef struct ain_data_t
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInInit(void);
 
@@ -68,6 +70,8 @@ void AInInit(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void ADC1_IRQHandler(void);
 void PIT1_IRQHandler(void);
@@ -93,6 +97,8 @@ void PIT1_IRQHandler(void);
 *       msg.sampling_rate_field[8:15] corresponds to AIN2 sampling rate, etc.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInSet(ain_msg_t);
 
@@ -106,6 +112,8 @@ void AInSet(ain_msg_t);
 *       have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInGetData(ain_data_t *);
 

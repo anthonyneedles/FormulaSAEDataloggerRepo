@@ -1,5 +1,5 @@
 /******************************************************************************
-*   Formula SAE Datalogger.c v0.2.0
+*   Formula SAE Datalogger.c v1.1.1
 *
 *   See /FormulaSAEDatalogger/README.txt for detailed changelog.
 *
@@ -36,13 +36,15 @@
 #include "AccelGyro.h"
 #include "Telemetry.h"
 #include "ECU.h"
+#include "DAQ.h"
 #include "Debug.h"
 
 void main(void) {
-     NVIC_SetPriorityGrouping(0);
 
     ClkCfgRun();
     DebugInit();
+    DOutInit();
+    DAQInit();
     ECUInit();
     AInInit();
     AGInit();

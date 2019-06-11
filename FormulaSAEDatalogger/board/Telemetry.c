@@ -26,6 +26,7 @@
 #include "GPS.h"
 #include "DigitalOutput.h"
 #include "AnalogInput.h"
+#include "DAQ.h"
 #include "Debug.h"
 
 /******************************************************************************
@@ -48,9 +49,9 @@
 #define CONFIG_FRAME_DATA_BYTES           15U
 #define DOUT_FRAME_DATA_BYTES              2U
 
-#define TELINPUTTASK_PRIORITY              4U
+#define TELINPUTTASK_PRIORITY              3U
 #define TELINPUTTASK_STKSIZE            1024U
-#define TELOUTPUTTASK_PRIORITY             5U
+#define TELOUTPUTTASK_PRIORITY             4U
 #define TELOUTPUTTASK_STKSIZE           1024U
 
 /* Input configuration codes. */
@@ -62,8 +63,11 @@
 #define CONFIG_ACK_2          ((uint8_t)0x55U)
 
 /* Input digital output codes. */
-#define DOUT_PREAMBLE_1       ((uint8_t)0x61U)
-#define DOUT_PREAMBLE_2       ((uint8_t)0x61U)
+#define as_PREAMBLE_1       ((uint8_t)0x4FU)
+#define as_PREAMBLE_2      ((uint8_t)0x4FU)
+
+#define DOUT_PREAMBLE_1       ((uint8_t)0xAAU)
+#define DOUT_PREAMBLE_2       ((uint8_t)0xAAU)
 
 /* PORTB. */
 #define UART3_RX_PIN_NUM                  10U
@@ -88,18 +92,97 @@
 #define AIN_SR_MASK           ((uint8_t)0xFFU)
 #define AIN_SR_SHIFT             ((uint8_t)0U)
 #define AIN_SR_BYTE_INDEX                  2U
-#define FIND_AIN_SR(buf) ((uint32_t)((buf[AIN_SR_BYTE_INDEX] & AIN_SR_MASK) >> AIN_SR_SHIFT))
-
+#define FIND_AIN_SR(buf) ((uint8_t)((buf[AIN_SR_BYTE_INDEX] & AIN_SR_MASK) >> AIN_SR_SHIFT))
 
 #define DOUT_POW_MASK         ((uint8_t)0xFFU)
 #define DOUT_POW_SHIFT           ((uint8_t)0U)
 #define DOUT_POW_BYTE_INDEX                0U
-#define FIND_DOUT_POW(buf) ((uint32_t)((buf[DOUT_POW_BYTE_INDEX] & DOUT_POW_MASK) >> DOUT_POW_SHIFT))
+#define FIND_DOUT_POW(buf) ((uint8_t)((buf[DOUT_POW_BYTE_INDEX] & DOUT_POW_MASK) >> DOUT_POW_SHIFT))
 
 #define DOUT_ST_MASK          ((uint8_t)0xFFU)
 #define DOUT_ST_SHIFT            ((uint8_t)0U)
 #define DOUT_ST_BYTE_INDEX                 1U
-#define FIND_DOUT_ST(buf) ((uint32_t)((buf[DOUT_ST_BYTE_INDEX] & DOUT_ST_MASK) >> DOUT_ST_SHIFT))
+#define FIND_DOUT_ST(buf) ((uint8_t)((buf[DOUT_ST_BYTE_INDEX] & DOUT_ST_MASK) >> DOUT_ST_SHIFT))
+
+#define DAQ1_POW_MASK         ((uint8_t)0x0FU)
+#define DAQ1_POW_SHIFT           ((uint8_t)0U)
+#define DAQ1_POW_BYTE_INDEX                3U
+#define FIND_DAQ1_POW(buf) ((uint8_t)((buf[DAQ1_POW_BYTE_INDEX] & DAQ1_POW_MASK) >> DAQ1_POW_SHIFT))
+
+#define DAQ2_POW_MASK         ((uint8_t)0xF0U)
+#define DAQ2_POW_SHIFT           ((uint8_t)4U)
+#define DAQ2_POW_BYTE_INDEX                3U
+#define FIND_DAQ2_POW(buf) ((uint8_t)((buf[DAQ2_POW_BYTE_INDEX] & DAQ2_POW_MASK) >> DAQ2_POW_SHIFT))
+
+#define DAQ3_POW_MASK         ((uint8_t)0x0FU)
+#define DAQ3_POW_SHIFT           ((uint8_t)0U)
+#define DAQ3_POW_BYTE_INDEX                4U
+#define FIND_DAQ3_POW(buf) ((uint8_t)((buf[DAQ3_POW_BYTE_INDEX] & DAQ3_POW_MASK) >> DAQ3_POW_SHIFT))
+
+#define DAQ4_POW_MASK         ((uint8_t)0xF0U)
+#define DAQ4_POW_SHIFT           ((uint8_t)4U)
+#define DAQ4_POW_BYTE_INDEX                4U
+#define FIND_DAQ4_POW(buf) ((uint8_t)((buf[DAQ4_POW_BYTE_INDEX] & DAQ4_POW_MASK) >> DAQ4_POW_SHIFT))
+
+#define DAQ5_POW_MASK         ((uint8_t)0x0FU)
+#define DAQ5_POW_SHIFT           ((uint8_t)0U)
+#define DAQ5_POW_BYTE_INDEX                5U
+#define FIND_DAQ5_POW(buf) ((uint8_t)((buf[DAQ5_POW_BYTE_INDEX] & DAQ5_POW_MASK) >> DAQ5_POW_SHIFT))
+
+#define DAQ6_POW_MASK         ((uint8_t)0xF0U)
+#define DAQ6_POW_SHIFT           ((uint8_t)4U)
+#define DAQ6_POW_BYTE_INDEX                5U
+#define FIND_DAQ6_POW(buf) ((uint8_t)((buf[DAQ6_POW_BYTE_INDEX] & DAQ6_POW_MASK) >> DAQ6_POW_SHIFT))
+
+#define DAQ7_POW_MASK         ((uint8_t)0x0FU)
+#define DAQ7_POW_SHIFT           ((uint8_t)0U)
+#define DAQ7_POW_BYTE_INDEX                6U
+#define FIND_DAQ7_POW(buf) ((uint8_t)((buf[DAQ7_POW_BYTE_INDEX] & DAQ7_POW_MASK) >> DAQ7_POW_SHIFT))
+
+#define DAQ8_POW_MASK         ((uint8_t)0xF0U)
+#define DAQ8_POW_SHIFT           ((uint8_t)4U)
+#define DAQ8_POW_BYTE_INDEX                6U
+#define FIND_DAQ8_POW(buf) ((uint8_t)((buf[DAQ8_POW_BYTE_INDEX] & DAQ8_POW_MASK) >> DAQ8_POW_SHIFT))
+
+#define DAQ1_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ1_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ1_TYPE_BYTE_INDEX                7U
+#define FIND_DAQ1_TYPE(buf) ((uint8_t)((buf[DAQ1_TYPE_BYTE_INDEX] & DAQ1_TYPE_MASK) >> DAQ1_TYPE_SHIFT))
+
+#define DAQ2_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ2_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ2_TYPE_BYTE_INDEX                8U
+#define FIND_DAQ2_TYPE(buf) ((uint8_t)((buf[DAQ2_TYPE_BYTE_INDEX] & DAQ2_TYPE_MASK) >> DAQ2_TYPE_SHIFT))
+
+#define DAQ3_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ3_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ3_TYPE_BYTE_INDEX                9U
+#define FIND_DAQ3_TYPE(buf) ((uint8_t)((buf[DAQ3_TYPE_BYTE_INDEX] & DAQ3_TYPE_MASK) >> DAQ3_TYPE_SHIFT))
+
+#define DAQ4_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ4_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ4_TYPE_BYTE_INDEX               10U
+#define FIND_DAQ4_TYPE(buf) ((uint8_t)((buf[DAQ4_TYPE_BYTE_INDEX] & DAQ4_TYPE_MASK) >> DAQ4_TYPE_SHIFT))
+
+#define DAQ5_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ5_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ5_TYPE_BYTE_INDEX               11U
+#define FIND_DAQ5_TYPE(buf) ((uint8_t)((buf[DAQ5_TYPE_BYTE_INDEX] & DAQ5_TYPE_MASK) >> DAQ5_TYPE_SHIFT))
+
+#define DAQ6_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ6_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ6_TYPE_BYTE_INDEX               12U
+#define FIND_DAQ6_TYPE(buf) ((uint8_t)((buf[DAQ6_TYPE_BYTE_INDEX] & DAQ6_TYPE_MASK) >> DAQ6_TYPE_SHIFT))
+
+#define DAQ7_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ7_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ7_TYPE_BYTE_INDEX               13U
+#define FIND_DAQ7_TYPE(buf) ((uint8_t)((buf[DAQ7_TYPE_BYTE_INDEX] & DAQ7_TYPE_MASK) >> DAQ7_TYPE_SHIFT))
+
+#define DAQ8_TYPE_MASK         ((uint8_t)0xFFU)
+#define DAQ8_TYPE_SHIFT           ((uint8_t)0U)
+#define DAQ8_TYPE_BYTE_INDEX               14U
+#define FIND_DAQ8_TYPE(buf) ((uint8_t)((buf[DAQ8_TYPE_BYTE_INDEX] & DAQ8_TYPE_MASK) >> DAQ8_TYPE_SHIFT))
 
 typedef enum
 {
@@ -137,6 +220,7 @@ static SemaphoreHandle_t telInitConfigRecieved;
 static ag_data_t telAGData;
 static gps_data_t telGPSData;
 static ain_data_t telAInData;
+static daq_data_t telDAQData[8];
 
 /* Buffers to hold the data (not preamble and not checksum) sections of frame. */
 static uint8_t telConfigMsgBuffer[CONFIG_FRAME_DATA_BYTES];
@@ -144,6 +228,8 @@ static uint8_t telDoutMsgBuffer[DOUT_FRAME_DATA_BYTES];
 
 static volatile uint8_t telTxByteToSend;
 static volatile uint8_t telRxByteReceived;
+
+static uint16_t telDataChecksum;
 
 static uint8_t telIsInitConfigRecieved = FALSE;
 
@@ -158,7 +244,7 @@ static void telGetDoutState(void);
 
 static void telGetSensorConfig(void);
 
-static void telPendOnInterrupt(void);
+static void telIdleTaskUntilInterrupt(void);
 
 static void telSendTime(void);
 
@@ -166,11 +252,15 @@ static void telSendAG(void);
 
 static void telSendAIn(void);
 
+static void telSendDAQ(void);
+
 static void telSetAIn(uint8_t *);
 
 static void telSetAG(uint8_t *);
 
 static void telSetDOut(uint8_t *);
+
+static void telSetDAQ(uint8_t *);
 
 static void telResurrectModule(void);
 
@@ -181,6 +271,8 @@ static void telResurrectModule(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void TelInit()
 {
@@ -240,6 +332,8 @@ void TelInit()
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telInputTask(void *pvParameters)
 {
@@ -247,7 +341,7 @@ static void telInputTask(void *pvParameters)
 
     while(1)
     {
-        telPendOnInterrupt();
+        telIdleTaskUntilInterrupt();
         switch(telRxByteReceived)
         {
             /* Incoming configuration frame. */
@@ -257,6 +351,7 @@ static void telInputTask(void *pvParameters)
 
             /* Incoming digital output state frame. */
             case DOUT_PREAMBLE_1:
+            case as_PREAMBLE_1:
                 telGetDoutState();
                 break;
 
@@ -279,12 +374,25 @@ static void telInputTask(void *pvParameters)
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telOutputTask(void *pvParameters)
 {
+    uint16_t checksum_to_send;
     xSemaphoreTake(telInitConfigRecieved, portMAX_DELAY);
 
+    NVIC_ClearPendingIRQ(UART3_RX_TX_IRQn);
     UART3->C2 |= UART_C2_TE(ENABLE);
+    telTxByteToSend = CONFIG_ACK_1;
+    UART3->D = telTxByteToSend;
+    UART3->C2 |= UART_C2_TIE(ENABLE);
+    telIdleTaskUntilInterrupt();
+    telTxByteToSend = CONFIG_ACK_1;
+    telIdleTaskUntilInterrupt();
+    telTxByteToSend = CONFIG_ACK_2;
+    telIdleTaskUntilInterrupt();
+    UART3->C2 &= ~UART_C2_TIE_MASK;
 
     while(1)
     {
@@ -294,11 +402,43 @@ static void telOutputTask(void *pvParameters)
         GPSGetData(&telGPSData);
         AGGetData(&telAGData);
         AInGetData(&telAInData);
+        DAQGetData(telDAQData);
+
+
+        telTxByteToSend = 0xAA;
+        UART3->C2 |= UART_C2_TIE(ENABLE);
+        telIdleTaskUntilInterrupt();
+        telTxByteToSend = 0xAA;
+        telIdleTaskUntilInterrupt();
+        UART3->C2 &= ~UART_C2_TIE_MASK;
+
+        telDataChecksum = 0;
 
         /* Sending data. */
         telSendTime();
         telSendAG();
         telSendAIn();
+
+        telTxByteToSend = 0;
+        UART3->C2 |= UART_C2_TIE(ENABLE);
+        telIdleTaskUntilInterrupt();
+        for(uint8_t i = 1; i < 32; i++)
+        {
+            telTxByteToSend = i;
+            telIdleTaskUntilInterrupt();
+        }
+        UART3->C2 &= ~UART_C2_TIE_MASK;
+
+        telSendDAQ();
+
+        checksum_to_send = telDataChecksum;
+
+        telTxByteToSend = ((uint8_t)(checksum_to_send >> 8));
+        UART3->C2 |= UART_C2_TIE(ENABLE);
+        telIdleTaskUntilInterrupt();
+        telTxByteToSend = (uint8_t)checksum_to_send;
+        telIdleTaskUntilInterrupt();
+        UART3->C2 &= ~UART_C2_TIE_MASK;
     }
 }
 
@@ -313,6 +453,8 @@ static void telOutputTask(void *pvParameters)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void UART3_RX_TX_IRQHandler()
 {
@@ -321,6 +463,7 @@ void UART3_RX_TX_IRQHandler()
 
     if(UART3_TDRE_FLAG == SET)
     { /* Sending data, Tx buffer is empty. */
+        telDataChecksum += telTxByteToSend;
         UART3->D = telTxByteToSend;
         vTaskNotifyGiveFromISR(telOutputTaskHandle, &xHigherPriorityTaskWoken);
     } else {}
@@ -343,6 +486,8 @@ void UART3_RX_TX_IRQHandler()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telGetSensorConfig()
 {
@@ -357,14 +502,16 @@ static void telGetSensorConfig()
         {
             case VERIFY_PREAMBLE:
                 /* Ensure that second byte of preamble is received. */
-                telPendOnInterrupt();
+                telIdleTaskUntilInterrupt();
                 if(telRxByteReceived != CONFIG_PREAMBLE_2)
                 {
                     rx_status = DISABLED;
-                    break;
+                    state = VERIFY_PREAMBLE;
+                } else
+                {
+                    state = SAVE_DATA;
                 }
 
-                state = SAVE_DATA;
                 break;
 
             case SAVE_DATA:
@@ -372,7 +519,7 @@ static void telGetSensorConfig()
                  * preamble nor checksum. */
                 for(uint8_t i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
                 {
-                    telPendOnInterrupt();
+                    telIdleTaskUntilInterrupt();
                     telConfigMsgBuffer[i] = telRxByteReceived;
                 }
 
@@ -380,27 +527,30 @@ static void telGetSensorConfig()
                 break;
 
             case VERIFY_CHECKSUM:
+                rx_checksum = 0;
                 /* Capture 16-bit checksum of data. */
-                telPendOnInterrupt();
-                rx_checksum |= ((uint16_t)telRxByteReceived);
-                telPendOnInterrupt();
+                telIdleTaskUntilInterrupt();
                 rx_checksum |= (((uint16_t)telRxByteReceived) << 8U);
+
+                telIdleTaskUntilInterrupt();
+                rx_checksum |= ((uint16_t)telRxByteReceived);
+
 
                 /* Perform summation of data section of frame. */
                 calc_checksum = 0;
-                for(uint8_t i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
+                for(uint16_t i = 0; i < CONFIG_FRAME_DATA_BYTES; i++)
                 {
                     calc_checksum += telConfigMsgBuffer[i];
                 }
 
-                if(calc_checksum != rx_checksum)
-                {
-                    rx_status = DISABLED;
-                    break;
-                } else
-                {
+//                if(calc_checksum != rx_checksum)
+//                {
+//                    rx_status = DISABLED;
+//                    state = VERIFY_PREAMBLE;
+//                } else
+//                {
                     state = SET_MODULES;
-                }
+//                }
                 break;
 
             case SET_MODULES:
@@ -408,6 +558,7 @@ static void telGetSensorConfig()
                  * modules. */
                 telSetAG(telConfigMsgBuffer);
                 telSetAIn(telConfigMsgBuffer);
+                telSetDAQ(telConfigMsgBuffer);
 
                 if(telIsInitConfigRecieved == FALSE)
                 {
@@ -421,18 +572,6 @@ static void telGetSensorConfig()
                 break;
 
             case SEND_ACK:
-                /* This will ONLY happen when output task is waiting for
-                 * semaphore post, so no resource mutex is needed. */
-                UART3->C2 |= UART_C2_TE(ENABLE);
-
-                UART3->D = CONFIG_ACK_1;
-                while(UART3_TDRE_FLAG != SET){}
-
-                UART3->D = CONFIG_ACK_2;
-                while(UART3_TDRE_FLAG != SET){}
-
-                UART3->C2 &= ~UART_C2_TE_MASK;
-
                 /* Enable output task operation. */
                 xSemaphoreGive(telInitConfigRecieved);
 
@@ -456,6 +595,8 @@ static void telGetSensorConfig()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telGetDoutState()
 {
@@ -468,8 +609,8 @@ static void telGetDoutState()
         {
             case VERIFY_PREAMBLE:
                 /* Ensure that second byte of preamble is received. */
-                telPendOnInterrupt();
-                if(telRxByteReceived != DOUT_PREAMBLE_2)
+                telIdleTaskUntilInterrupt();
+                if((telRxByteReceived != DOUT_PREAMBLE_2) && (telRxByteReceived != as_PREAMBLE_1))
                 {
                     rx_status = DISABLED;
                     break;
@@ -483,7 +624,7 @@ static void telGetDoutState()
                  * preamble. */
                 for(uint8_t i = 0; i < DOUT_FRAME_DATA_BYTES; i++)
                 {
-                    telPendOnInterrupt();
+                    telIdleTaskUntilInterrupt();
                     telDoutMsgBuffer[i] = telRxByteReceived;
                 }
 
@@ -507,7 +648,7 @@ static void telGetDoutState()
 }
 
 /******************************************************************************
-*   telPendOnInterrupt() - Private function that pends on the UART3 ISR. This
+*   telIdleTaskUntilInterrupt() - Private function that pends on the UART3 ISR. This
 *   will both when the UART3 TX buffer is empty and when the UART3 RX buffer
 *   is full. The ISR will check which flag triggered the interrupt, and notifies
 *   the corresponding task. This ISR allows the telemetry tasks to enter an
@@ -516,8 +657,10 @@ static void telGetDoutState()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
-static void telPendOnInterrupt()
+static void telIdleTaskUntilInterrupt()
 {
     uint8_t notify_count;
 
@@ -537,25 +680,27 @@ static void telPendOnInterrupt()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSendTime()
 {
     telTxByteToSend = telGPSData.year;
     UART3->C2 |= UART_C2_TIE(ENABLE);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = telGPSData.month;
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = telGPSData.day;
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = telGPSData.hour;
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = telGPSData.min;
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = telGPSData.sec;
-    telPendOnInterrupt();
-    telTxByteToSend = telGPSData.ms;
-    telPendOnInterrupt();
-    UART3->C2 &= ~UART_C2_TIE(ENABLE);
+    telIdleTaskUntilInterrupt();
+    telTxByteToSend = telGPSData.cs;
+    telIdleTaskUntilInterrupt();
+    UART3->C2 &= ~UART_C2_TIE_MASK;
 }
 
 /******************************************************************************
@@ -567,35 +712,37 @@ static void telSendTime()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSendAG()
 {
     telTxByteToSend = ((uint8_t)(telAGData.accel_data.x >> 8));
     UART3->C2 |= UART_C2_TIE(ENABLE);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.accel_data.x);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAGData.accel_data.y >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.accel_data.y);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAGData.accel_data.z >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.accel_data.z);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAGData.gyro_data.x >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.gyro_data.x);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAGData.gyro_data.y >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.gyro_data.y);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAGData.gyro_data.z >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAGData.gyro_data.z);
-    telPendOnInterrupt();
-    UART3->C2 &= ~UART_C2_TIE(ENABLE);
+    telIdleTaskUntilInterrupt();
+    UART3->C2 &= ~UART_C2_TIE_MASK;
 }
 
 /******************************************************************************
@@ -607,27 +754,55 @@ static void telSendAG()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSendAIn()
 {
     telTxByteToSend = ((uint8_t)(telAInData.ain1_data >> 8));
     UART3->C2 |= UART_C2_TIE(ENABLE);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAInData.ain1_data);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAInData.ain2_data >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAInData.ain2_data);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAInData.ain3_data >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAInData.ain3_data);
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)(telAInData.ain4_data >> 8));
-    telPendOnInterrupt();
+    telIdleTaskUntilInterrupt();
     telTxByteToSend = ((uint8_t)telAInData.ain4_data);
-    telPendOnInterrupt();
-    UART3->C2 &= ~UART_C2_TIE(ENABLE);
+    telIdleTaskUntilInterrupt();
+    UART3->C2 &= ~UART_C2_TIE_MASK;
+}
+
+/******************************************************************************
+*   telSendDAQ() -
+*
+*   Parameters: None
+*
+*   Return: None
+*
+*   Author: Anthony Needles
+******************************************************************************/
+static void telSendDAQ()
+{
+    for(uint8_t i = 0; i < 8; i++)
+    {
+        for(uint8_t j = 0; j < 4; j++)
+        {
+            telTxByteToSend = (uint8_t)(telDAQData[i].sensor[j].data >> 8);
+            UART3->C2 |= UART_C2_TIE(ENABLE);
+            telIdleTaskUntilInterrupt();
+            telTxByteToSend = (uint8_t)(telDAQData[i].sensor[j].data);
+            telIdleTaskUntilInterrupt();
+        }
+    }
+
+    UART3->C2 &= ~UART_C2_TIE_MASK;
 }
 
 /******************************************************************************
@@ -641,6 +816,8 @@ static void telSendAIn()
 *       from the wireless telemetry unit.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSetAG(uint8_t *msg_buf)
 {
@@ -662,6 +839,8 @@ static void telSetAG(uint8_t *msg_buf)
 *       from the wireless telemetry unit.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSetAIn(uint8_t *msg_buf)
 {
@@ -675,6 +854,38 @@ static void telSetAIn(uint8_t *msg_buf)
 }
 
 /******************************************************************************
+*   telSetDAQ() -
+*
+*   Return: None
+*
+*   Author: Anthony Needles
+******************************************************************************/
+static void telSetDAQ(uint8_t *msg_buf)
+{
+    daq_msg_t daq_msg;
+
+    daq_msg.power_fields[DAQ1] = FIND_DAQ1_POW(msg_buf);
+    daq_msg.power_fields[DAQ2] = FIND_DAQ2_POW(msg_buf);
+    daq_msg.power_fields[DAQ3] = FIND_DAQ3_POW(msg_buf);
+    daq_msg.power_fields[DAQ4] = FIND_DAQ4_POW(msg_buf);
+    daq_msg.power_fields[DAQ5] = FIND_DAQ5_POW(msg_buf);
+    daq_msg.power_fields[DAQ6] = FIND_DAQ6_POW(msg_buf);
+    daq_msg.power_fields[DAQ7] = FIND_DAQ7_POW(msg_buf);
+    daq_msg.power_fields[DAQ8] = FIND_DAQ8_POW(msg_buf);
+
+    daq_msg.type_fields[DAQ1] = FIND_DAQ1_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ2] = FIND_DAQ2_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ3] = FIND_DAQ3_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ4] = FIND_DAQ4_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ5] = FIND_DAQ5_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ6] = FIND_DAQ6_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ7] = FIND_DAQ7_TYPE(msg_buf);
+    daq_msg.type_fields[DAQ8] = FIND_DAQ8_TYPE(msg_buf);
+
+    DAQSet(daq_msg);
+}
+
+/******************************************************************************
 *   telSetDOut() - Private function that sets digital output powers and states
 *   (used by the Digital Output module). This data is received via UART3 by the
 *   wireless telemetry unit.
@@ -685,6 +896,8 @@ static void telSetAIn(uint8_t *msg_buf)
 *       from the wireless telemetry unit.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telSetDOut(uint8_t *msg_buf)
 {
@@ -707,6 +920,8 @@ static void telSetDOut(uint8_t *msg_buf)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void telResurrectModule()
 {

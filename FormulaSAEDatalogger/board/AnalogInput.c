@@ -49,7 +49,7 @@
 #define SINGLE_ENDED                0x00U
 #define SAMP_RATE_100HZ             0x02U
 
-#define AINSAMPLERTASK_PRIORITY        4U
+#define AINSAMPLERTASK_PRIORITY        6U
 #define AINSAMPLERTASK_STKSIZE       256U
 
 /* PORTB. */
@@ -87,28 +87,28 @@
 #define AIN4_SR_OFFSET      ((uint32_t)6U)
 
 /* Sets AIN power pin, providing 12V power to AIN sensor. */
-#define A1_PWR_12V (GPIOB->PDOR |= ((1U) << AIN1_POWER_PIN_NUM))
-#define A2_PWR_12V (GPIOB->PDOR |= ((1U) << AIN2_POWER_PIN_NUM))
-#define A3_PWR_12V (GPIOB->PDOR |= ((1U) << AIN3_POWER_PIN_NUM))
-#define A4_PWR_12V (GPIOB->PDOR |= ((1U) << AIN4_POWER_PIN_NUM))
+#define A1_PWR_12V() (GPIOB->PDOR |= ((1U) << AIN1_POWER_PIN_NUM))
+#define A2_PWR_12V() (GPIOB->PDOR |= ((1U) << AIN2_POWER_PIN_NUM))
+#define A3_PWR_12V() (GPIOB->PDOR |= ((1U) << AIN3_POWER_PIN_NUM))
+#define A4_PWR_12V() (GPIOB->PDOR |= ((1U) << AIN4_POWER_PIN_NUM))
 
 /* Clears AIN power pin, providing 5V power to AIN sensor. */
-#define A1_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN1_POWER_PIN_NUM))
-#define A2_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN2_POWER_PIN_NUM))
-#define A3_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN3_POWER_PIN_NUM))
-#define A4_PWR_5V (GPIOB->PDOR &= ~((1U) << AIN4_POWER_PIN_NUM))
+#define A1_PWR_5V() (GPIOB->PDOR &= ~((1U) << AIN1_POWER_PIN_NUM))
+#define A2_PWR_5V() (GPIOB->PDOR &= ~((1U) << AIN2_POWER_PIN_NUM))
+#define A3_PWR_5V() (GPIOB->PDOR &= ~((1U) << AIN3_POWER_PIN_NUM))
+#define A4_PWR_5V() (GPIOB->PDOR &= ~((1U) << AIN4_POWER_PIN_NUM))
 
 /* Sets AIN conditioning pin, providing 5V conditioning to AIN sensor signal. */
-#define A1_COND_5V (GPIOC->PDOR |= ((1U) << AIN1_COND_PIN_NUM))
-#define A2_COND_5V (GPIOC->PDOR |= ((1U) << AIN2_COND_PIN_NUM))
-#define A3_COND_5V (GPIOC->PDOR |= ((1U) << AIN3_COND_PIN_NUM))
-#define A4_COND_5V (GPIOC->PDOR |= ((1U) << AIN4_COND_PIN_NUM))
+#define A1_COND_5V() (GPIOC->PDOR |= ((1U) << AIN1_COND_PIN_NUM))
+#define A2_COND_5V() (GPIOC->PDOR |= ((1U) << AIN2_COND_PIN_NUM))
+#define A3_COND_5V() (GPIOC->PDOR |= ((1U) << AIN3_COND_PIN_NUM))
+#define A4_COND_5V() (GPIOC->PDOR |= ((1U) << AIN4_COND_PIN_NUM))
 
 /* Clears AIN conditioning pin, providing 12V conditioning to AIN sensor signal. */
-#define A1_COND_12V (GPIOC->PDOR &= ~((1U) << AIN1_COND_PIN_NUM))
-#define A2_COND_12V (GPIOC->PDOR &= ~((1U) << AIN2_COND_PIN_NUM))
-#define A3_COND_12V (GPIOC->PDOR &= ~((1U) << AIN3_COND_PIN_NUM))
-#define A4_COND_12V (GPIOC->PDOR &= ~((1U) << AIN4_COND_PIN_NUM))
+#define A1_COND_12V() (GPIOC->PDOR &= ~((1U) << AIN1_COND_PIN_NUM))
+#define A2_COND_12V() (GPIOC->PDOR &= ~((1U) << AIN2_COND_PIN_NUM))
+#define A3_COND_12V() (GPIOC->PDOR &= ~((1U) << AIN3_COND_PIN_NUM))
+#define A4_COND_12V() (GPIOC->PDOR &= ~((1U) << AIN4_COND_PIN_NUM))
 
 /* Register Flags. */
 #define COCO_FLAG ((ADC1->SC1[0] & ADC_SC1_COCO_MASK) >> ADC_SC1_COCO_SHIFT)
@@ -154,7 +154,7 @@ static SemaphoreHandle_t ainCurrentDataKey;
  * task notification. */
 static TaskHandle_t ainSamplerTaskHandle = NULL;
 
-static volatile uint8_t ainADCSample;
+static volatile uint16_t ainADCSample;
 static volatile uint8_t ainCurrentChannel;
 
 /******************************************************************************
@@ -175,6 +175,8 @@ static void ainResurrectModule(void);
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInInit()
 {
@@ -211,7 +213,7 @@ void AInInit()
     /* PIT1 initialization for 125us period, 8kHz trigger frequency */
     SIM->SCGC6 |= SIM_SCGC6_PIT(ENABLE);
     PIT->MCR &= ~PIT_MCR_MDIS(ENABLE);
-    PIT->CHANNEL[PIT1].LDVAL = PIT_200HZ_LDVAL;
+    PIT->CHANNEL[PIT1].LDVAL = PIT_8KHZ_LDVAL;
     PIT->CHANNEL[PIT1].TCTRL |= PIT_TCTRL_TEN(ENABLE);
 
     /* ADC1 initialization for PIT1 triggering, 60MHz/8 = 7.5MHz ADCK, 12 bit
@@ -237,8 +239,8 @@ void AInInit()
     ADC1->SC1[0] = ADC_SC1_AIEN(ENABLE) | ADC_SC1_DIFF(SINGLE_ENDED) |
                    ADC_SC1_ADCH(ainCurrentChannel);
 
-    /* Initial configuration: 5V input conditioning and 5V power supply. */
-    ainCurrentData.power_state_field = (uint8_t)0x00U;
+    /* Initial configuration: 12V input conditioning and 12V power supply. */
+    ainCurrentData.power_state_field = (uint8_t)0xFFU;
     ainCurrentData.ain1_data = (uint16_t)0x0000U;
     ainCurrentData.ain2_data = (uint16_t)0x0000U;
     ainCurrentData.ain3_data = (uint16_t)0x0000U;
@@ -247,6 +249,18 @@ void AInInit()
     ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
     ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
     ainCurrentData.ain1_samp_rate = SAMP_RATE_100HZ;
+
+    /* Convert power/conditioning message to individual bits for each AIN and
+     * changes power output and input conditioning accordingly */
+    (AIN1_POWER_BIT(ainCurrentData.power_state_field) == 1U) ? A1_PWR_12V() : A1_PWR_5V();
+    (AIN2_POWER_BIT(ainCurrentData.power_state_field) == 1U) ? A2_PWR_12V() : A2_PWR_5V();
+    (AIN3_POWER_BIT(ainCurrentData.power_state_field) == 1U) ? A3_PWR_12V() : A3_PWR_5V();
+    (AIN4_POWER_BIT(ainCurrentData.power_state_field) == 1U) ? A4_PWR_12V() : A4_PWR_5V();
+
+    (AIN1_COND_BIT(ainCurrentData.power_state_field) == 1U) ? A1_COND_12V() : A1_COND_5V();
+    (AIN2_COND_BIT(ainCurrentData.power_state_field) == 1U) ? A2_COND_12V() : A2_COND_5V();
+    (AIN3_COND_BIT(ainCurrentData.power_state_field) == 1U) ? A3_COND_12V() : A3_COND_5V();
+    (AIN4_COND_BIT(ainCurrentData.power_state_field) == 1U) ? A4_COND_12V() : A4_COND_5V();
 
     ainCurrentDataKey = xSemaphoreCreateMutex();
     while(ainCurrentDataKey == NULL){ /* Out of heap memory (DEBUG TRAP). */ }
@@ -276,6 +290,8 @@ void AInInit()
 *       created as the task's parameter. Not used for this task.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ainSamplerTask(void *pvParameters)
 {
@@ -295,19 +311,19 @@ static void ainSamplerTask(void *pvParameters)
         switch(ainCurrentChannel)
         {
             case AIN1_SIG_CHNL:
-                ainCurrentData.ain1_data = ainADCSample;
+                ainCurrentData.ain4_data = ainADCSample;
                 break;
 
             case AIN2_SIG_CHNL:
-                ainCurrentData.ain2_data = ainADCSample;
+                ainCurrentData.ain1_data = ainADCSample;
                 break;
 
             case AIN3_SIG_CHNL:
-                ainCurrentData.ain3_data = ainADCSample;
+                ainCurrentData.ain2_data = ainADCSample;
                 break;
 
             case AIN4_SIG_CHNL:
-                ainCurrentData.ain4_data = ainADCSample;
+                ainCurrentData.ain3_data = ainADCSample;
                 break;
 
             default:
@@ -327,6 +343,8 @@ static void ainSamplerTask(void *pvParameters)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void ADC1_IRQHandler()
 {
@@ -388,20 +406,22 @@ void ADC1_IRQHandler()
 *       msg.sampling_rate_field[6:7] corresponds to AIN4 sampling rate.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInSet(ain_msg_t msg)
 {
     /* Convert power/conditioning message to individual bits for each AIN and
      * changes power output and input conditioning accordingly */
-    (AIN1_POWER_BIT(msg.power_state_field) == 1U) ? A1_PWR_12V : A1_PWR_5V;
-    (AIN2_POWER_BIT(msg.power_state_field) == 1U) ? A2_PWR_12V : A2_PWR_5V;
-    (AIN3_POWER_BIT(msg.power_state_field) == 1U) ? A3_PWR_12V : A3_PWR_5V;
-    (AIN4_POWER_BIT(msg.power_state_field) == 1U) ? A4_PWR_12V : A4_PWR_5V;
+    (AIN1_POWER_BIT(msg.power_state_field) == 1U) ? A1_PWR_12V() : A1_PWR_5V();
+    (AIN2_POWER_BIT(msg.power_state_field) == 1U) ? A2_PWR_12V() : A2_PWR_5V();
+    (AIN3_POWER_BIT(msg.power_state_field) == 1U) ? A3_PWR_12V() : A3_PWR_5V();
+    (AIN4_POWER_BIT(msg.power_state_field) == 1U) ? A4_PWR_12V() : A4_PWR_5V();
 
-    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_12V : A1_COND_5V;
-    (AIN2_COND_BIT(msg.power_state_field) == 1U) ? A2_COND_12V : A2_COND_5V;
-    (AIN3_COND_BIT(msg.power_state_field) == 1U) ? A3_COND_12V : A3_COND_5V;
-    (AIN4_COND_BIT(msg.power_state_field) == 1U) ? A4_COND_12V : A4_COND_5V;
+    (AIN1_COND_BIT(msg.power_state_field) == 1U) ? A1_COND_12V() : A1_COND_5V();
+    (AIN2_COND_BIT(msg.power_state_field) == 1U) ? A2_COND_12V() : A2_COND_5V();
+    (AIN3_COND_BIT(msg.power_state_field) == 1U) ? A3_COND_12V() : A3_COND_5V();
+    (AIN4_COND_BIT(msg.power_state_field) == 1U) ? A4_COND_12V() : A4_COND_5V();
 
     /* Pend on Mutex to update data structure. */
     xSemaphoreTake(ainCurrentDataKey, portMAX_DELAY);
@@ -425,6 +445,8 @@ void AInSet(ain_msg_t msg)
 *       have current data copied to it.
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 void AInGetData(ain_data_t *ldata)
 {
@@ -443,6 +465,8 @@ void AInGetData(ain_data_t *ldata)
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ainCalibrateADC1()
 {
@@ -490,6 +514,8 @@ static void ainCalibrateADC1()
 *   Parameters: None
 *
 *   Return: None
+*
+*   Author: Anthony Needles
 ******************************************************************************/
 static void ainResurrectModule()
 {
